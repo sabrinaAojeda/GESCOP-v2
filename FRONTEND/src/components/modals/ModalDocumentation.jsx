@@ -1,3 +1,4 @@
+// src/components/Common/ModalDocumentation.jsx
 import React, { useState } from 'react'
 import './ModalVehiculo.css'
 

@@ -1,0 +1,43 @@
+# .htaccess PRINCIPAL (fuera de las carpetas backend y frontend)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # 1. Manejar OPTIONS requests (CORS preflight)
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ - [R=200,L]
+    
+    # 2. Permitir archivos y directorios reales
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    
+    # 3. Rutas del API backend
+    # /api/* -> BACKEND/api/index.php
+    RewriteRule ^api/(.*)$ BACKEND/api/index.php [QSA,L]
+    
+    # 4. Todo lo demás va a FRONTEND (para React SPA)
+    RewriteRule ^(.*)$ FRONTEND/index.html [QSA,L]
+</IfModule>
+
+# Headers CORS
+<IfModule mod_headers.c>
+    # Headers para todos los responses
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    Header always set Access-Control-Expose-Headers "Content-Length, Content-Range"
+    Header always set Access-Control-Max-Age "3600"
+    
+    # Headers específicos para archivos PHP
+    <FilesMatch "\.php$">
+        Header always set Content-Type "application/json; charset=UTF-8"
+    </FilesMatch>
+</IfModule>
+
+# Configuración PHP (si está en el mismo servidor)
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_value error_reporting -1
+    php_flag log_errors On
+</IfModule>

@@ -1,8 +1,114 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import './Proveedores.css'
+// FRONTEND/src/pages/Proveedores/Proveedores.jsx - VERSIÓN ACTUALIZADA
+import React, { useState, useEffect, memo } from 'react';
+import { Link } from 'react-router-dom';
+import { useProveedores } from '../../hooks/useProveedores';
+import ProveedorTable from '../../components/Proveedores/ProveedorTable';
+import ProveedorFilters from '../../components/Proveedores/ProveedorFilters';
+import ProveedorModal from '../../components/Proveedores/ProveedorModal';
+import ColumnSelectorProveedores from '../../components/Common/ColumnSelectorProveedores';
+import './Proveedores.css';
 
 const Proveedores = () => {
+  const {
+    proveedores,
+    loading,
+    error,
+    pagination,
+    filterOptions,
+    createProveedor,
+    updateProveedor,
+    deleteProveedor,
+    handlePageChange,
+    handleSearch,
+    handleRubroFilter,
+    handleEstadoFilter,
+    handleLocalidadFilter,
+    resetFilters,
+    exportToCSV
+  } = useProveedores();
+
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState('crear');
+  const [selectedProveedor, setSelectedProveedor] = useState(null);
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [columnasVisibles, setColumnasVisibles] = useState({
+    codigo: true,
+    razon_social: true,
+    cuit: true,
+    rubro: true,
+    contacto: true,
+    telefono: false,
+    email: false,
+    localidad: true,
+    estado: true,
+    seguro_RT: false,
+    direccion: false
+  });
+
+  // Manejar crear nuevo proveedor
+  const handleCreateProveedor = () => {
+    setSelectedProveedor(null);
+    setModalMode('crear');
+    setShowModal(true);
+  };
+
+  // Manejar editar proveedor
+  const handleEditProveedor = (proveedor) => {
+    setSelectedProveedor(proveedor);
+    setModalMode('editar');
+    setShowModal(true);
+  };
+
+  // Manejar ver proveedor
+  const handleViewProveedor = (proveedor) => {
+    setSelectedProveedor(proveedor);
+    setModalMode('ver');
+    setShowModal(true);
+  };
+
+  // Manejar eliminar proveedor
+  const handleDeleteProveedor = async (proveedor) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar a ${proveedor.razon_social}?`)) {
+      const result = await deleteProveedor(proveedor.id);
+      if (result.success) {
+        alert('Proveedor eliminado exitosamente');
+      } else {
+        alert(result.error || 'Error al eliminar el proveedor');
+      }
+    }
+  };
+
+  // Manejar guardar proveedor (crear o actualizar)
+  const handleSaveProveedor = async (proveedorData) => {
+    let result;
+    
+    if (modalMode === 'crear') {
+      result = await createProveedor(proveedorData);
+    } else {
+      result = await updateProveedor(selectedProveedor.id, proveedorData);
+    }
+
+    if (result.success) {
+      setShowModal(false);
+      // El éxito se maneja en el hook
+    } else {
+      // El error se maneja en el hook y se muestra en la UI
+    }
+  };
+
+  // Manejar cambio de columnas visibles
+  const handleToggleColumna = (columna) => {
+    setColumnasVisibles(prev => ({
+      ...prev,
+      [columna]: !prev[columna]
+    }));
+  };
+
+  // Calcular estadísticas
+  const proveedoresActivos = proveedores.filter(p => p.estado === 'Activo').length;
+  const proveedoresSuspendidos = proveedores.filter(p => p.estado === 'Suspendido').length;
+  const proveedoresConSeguro = proveedores.filter(p => p.seguro_RT).length;
+
   return (
     <div className="proveedores-page">
       <div className="breadcrumb">
@@ -10,18 +116,29 @@ const Proveedores = () => {
         <span>Proveedores</span>
       </div>
 
+      {error && (
+        <div className="error-message global-error">
+          {error}
+        </div>
+      )}
+
+      {/* Tarjetas de resumen */}
       <div className="summary-cards">
         <div className="summary-card-small">
-          <div className="number">12</div>
+          <div className="number">{proveedores.length}</div>
+          <div className="label">Total Proveedores</div>
+        </div>
+        <div className="summary-card-small">
+          <div className="number">{proveedoresActivos}</div>
           <div className="label">Proveedores Activos</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">8</div>
-          <div className="label">Contratos Vigentes</div>
+          <div className="number">{proveedoresSuspendidos}</div>
+          <div className="label">Proveedores Suspendidos</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">2</div>
-          <div className="label">Contratos por Renovar</div>
+          <div className="number">{proveedoresConSeguro}</div>
+          <div className="label">Con Seguro RT</div>
         </div>
       </div>
 
@@ -29,90 +146,98 @@ const Proveedores = () => {
         <div className="section-header">
           <h2 className="section-title">🤝 Gestión de Proveedores</h2>
           <div className="table-toolbar">
-            <button className="btn btn-secondary">
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowColumnSelector(true)}
+            >
               <span>👁️</span> Columnas
             </button>
-            <button className="btn btn-secondary">
-              <span>📤</span> Exportar
+            <button 
+              className="btn btn-secondary"
+              onClick={exportToCSV}
+              disabled={proveedores.length === 0}
+            >
+              <span>📤</span> Exportar CSV
             </button>
-            <button className="btn btn-primary">
+            <button 
+              className="btn btn-primary"
+              onClick={handleCreateProveedor}
+              disabled={loading}
+            >
               <span>+</span> Nuevo Proveedor
             </button>
           </div>
         </div>
 
-        <div className="filter-bar">
-          <input type="text" className="filter-select" placeholder="Buscar proveedor..." />
-          <select className="filter-select">
-            <option>Todos los rubros</option>
-            <option>Combustible</option>
-            <option>Repuestos</option>
-            <option>Mantenimiento</option>
-            <option>Seguros</option>
-            <option>Neumáticos</option>
-          </select>
-          <select className="filter-select">
-            <option>Todos los estados</option>
-            <option>Activo</option>
-            <option>Suspendido</option>
-            <option>Inactivo</option>
-          </select>
-        </div>
+        {/* Filtros */}
+        <ProveedorFilters
+          onSearch={handleSearch}
+          onRubroFilter={handleRubroFilter}
+          onEstadoFilter={handleEstadoFilter}
+          onLocalidadFilter={handleLocalidadFilter}
+          onReset={resetFilters}
+          filterOptions={filterOptions}
+          loading={loading}
+        />
 
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Razón Social</th>
-              <th>CUIT</th>
-              <th>Rubro</th>
-              <th>Contacto</th>
-              <th>Teléfono</th>
-              <th>Email</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>PROV-001</td>
-              <td>YPF S.A.</td>
-              <td>30-12345678-9</td>
-              <td>Combustible</td>
-              <td>Carlos Rodríguez</td>
-              <td>011-4789-1234</td>
-              <td>crodriguez@ypf.com</td>
-              <td><span className="status-badge status-active">Activo</span></td>
-              <td>
-                <div className="action-buttons">
-                  <button className="icon-btn" title="Ver">👁️</button>
-                  <button className="icon-btn" title="Editar">✏️</button>
-                  <button className="icon-btn" title="Documentación">📄</button>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>PROV-002</td>
-              <td>Neumáticos SRL</td>
-              <td>30-98765432-1</td>
-              <td>Neumáticos</td>
-              <td>Ana López</td>
-              <td>011-4123-4567</td>
-              <td>alopez@neumaticos.com</td>
-              <td><span className="status-badge status-active">Activo</span></td>
-              <td>
-                <div className="action-buttons">
-                  <button className="icon-btn" title="Ver">👁️</button>
-                  <button className="icon-btn" title="Editar">✏️</button>
-                  <button className="icon-btn" title="Documentación">📄</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {/* Tabla */}
+        <ProveedorTable
+          proveedores={proveedores}
+          loading={loading}
+          onEdit={handleEditProveedor}
+          onDelete={handleDeleteProveedor}
+          onView={handleViewProveedor}
+          columnasVisibles={columnasVisibles}
+        />
+
+        {/* Paginación */}
+        {pagination.total_pages > 1 && (
+          <div className="pagination">
+            <button
+              className="pagination-btn"
+              disabled={pagination.current_page === 1 || loading}
+              onClick={() => handlePageChange(pagination.current_page - 1)}
+            >
+              Anterior
+            </button>
+            
+            <span className="pagination-info">
+              Página {pagination.current_page} de {pagination.total_pages}
+            </span>
+            
+            <button
+              className="pagination-btn"
+              disabled={pagination.current_page === pagination.total_pages || loading}
+              onClick={() => handlePageChange(pagination.current_page + 1)}
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </section>
-    </div>
-  )
-}
 
-export default Proveedores
+      {/* Modal para crear/editar proveedor */}
+      {showModal && (
+        <ProveedorModal
+          mode={modalMode}
+          proveedor={selectedProveedor}
+          onClose={() => setShowModal(false)}
+          onSave={handleSaveProveedor}
+          loading={loading}
+        />
+      )}
+
+      {/* Selector de columnas */}
+      {showColumnSelector && (
+        <ColumnSelectorProveedores
+          columnasVisibles={columnasVisibles}
+          onToggleColumna={handleToggleColumna}
+          onClose={() => setShowColumnSelector(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+// EVITA RE-RENDERS INNECESARIOS
+export default memo(Proveedores);

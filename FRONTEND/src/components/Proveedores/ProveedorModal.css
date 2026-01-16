@@ -1,0 +1,52 @@
+/* FRONTEND/src/components/Proveedores/ProveedorModal.css */
+.proveedor-modal-content {
+  padding: 10px 0;
+}
+
+/* Si el modal necesita estilos especiales */
+.proveedor-modal .modal-content {
+  max-width: 1200px;
+}
+
+/* Responsive para el modal */
+@media (max-width: 768px) {
+  .proveedor-modal .modal-content {
+    margin: 20px;
+    width: calc(100% - 40px);
+  }
+}
+
+/* Loading state para el modal */
+.proveedor-modal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  min-height: 200px;
+}
+
+.proveedor-modal-loading .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #4299e1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Ajustes específicos para diferentes modos */
+.proveedor-modal[data-mode="ver"] .form-input,
+.proveedor-modal[data-mode="ver"] .form-select {
+  background: #f7fafc;
+  cursor: not-allowed;
+}
+
+.proveedor-modal[data-mode="ver"] .form-actions {
+  display: none;
+}

@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Permitir archivos y directorios reales
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    
+    # Redirigir todo a index.html para React SPA
+    RewriteRule ^(.*)$ FRONTEND/index.html [QSA,L]
+</IfModule>

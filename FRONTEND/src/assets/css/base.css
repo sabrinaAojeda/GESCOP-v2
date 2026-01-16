@@ -1,6 +1,12 @@
 :root {
-    --primary-blue: #2563eb;
-    --primary-dark: #1e40af;
+    /* Tu paleta de colores */
+    --primary-blue: #066496;
+    --primary-dark: #07668C;
+    --accent-teal: #56A69E;
+    --accent-gold: #D9AA1E;
+    --text-black: #0D0D0D;
+    
+    /* Colores del sistema */
     --success-green: #10b981;
     --warning-orange: #f59e0b;
     --error-red: #ef4444;
@@ -21,7 +27,7 @@
 body {
     font-family: 'Segoe UI', system-ui, sans-serif;
     background: var(--gray-50);
-    color: var(--gray-900);
+    color: var(--text-black);
     line-height: 1.5;
 }
 
@@ -40,4 +46,49 @@ body {
 
 .empty-state p {
     margin-bottom: 15px;
+}
+
+/* Utilidades de color */
+.bg-primary {
+    background-color: var(--primary-blue) !important;
+}
+
+.bg-primary-dark {
+    background-color: var(--primary-dark) !important;
+}
+
+.bg-accent-teal {
+    background-color: var(--accent-teal) !important;
+}
+
+.bg-accent-gold {
+    background-color: var(--accent-gold) !important;
+}
+
+.text-primary {
+    color: var(--primary-blue) !important;
+}
+
+.text-primary-dark {
+    color: var(--primary-dark) !important;
+}
+
+.text-accent-teal {
+    color: var(--accent-teal) !important;
+}
+
+.text-accent-gold {
+    color: var(--accent-gold) !important;
+}
+
+.text-black {
+    color: var(--text-black) !important;
+}
+
+.border-primary {
+    border-color: var(--primary-blue) !important;
+}
+
+.border-accent-teal {
+    border-color: var(--accent-teal) !important;
 }

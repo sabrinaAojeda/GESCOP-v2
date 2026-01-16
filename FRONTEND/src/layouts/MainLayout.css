@@ -1,39 +1,120 @@
+/* src/layouts/MainLayout.css - VERSIÓN MEJORADA */
 .app-container {
-  display: grid;
-  grid-template-columns: 250px 1fr;
+  display: flex;
   min-height: 100vh;
   background: #f9fafb;
+  position: relative;
 }
 
+/* Sidebar Styles - MEJORADO */
 .sidebar {
   background: white;
-  border-right: 1px solid #e5e7eb;
+  border-right: 2px solid #07668C;
   position: fixed;
   width: 250px;
   height: 100vh;
   overflow-y: auto;
+  box-shadow: 2px 0 15px rgba(6, 100, 150, 0.15);
+  z-index: 1000;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Sidebar Desktop - SIEMPRE visible a menos que se colapse manualmente */
+.sidebar.desktop {
+  transform: translateX(0);
+}
+
+.sidebar.desktop.closed {
+  transform: translateX(-100%);
+  box-shadow: none;
+}
+
+/* Sidebar Mobile - SOLO visible cuando se abre */
+.sidebar.mobile {
+  transform: translateX(-100%);
+  width: 280px;
+}
+
+.sidebar.mobile.open {
+  transform: translateX(0);
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Main Content */
 .main-content {
-  grid-column: 2;
+  flex: 1;
   min-height: 100vh;
-  margin-left: 250px;
   display: flex;
   flex-direction: column;
+  transition: margin-left 0.3s ease;
+  width: 100%;
 }
 
+/* Overlay solo para móviles */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(3px);
+  display: none;
+}
+
+/* Mostrar overlay solo en móviles reales cuando sidebar está abierta */
+.sidebar.mobile.open + .main-content .sidebar-overlay {
+  display: block;
+}
+
+/* Content Area */
 .content-area {
   flex: 1;
   padding: 20px;
-  background: #f9fafb;
+  background: linear-gradient(135deg, #f9fafb 0%, #f0f7fa 100%);
   overflow-y: auto;
+  min-height: calc(100vh - 70px);
 }
 
-/* Centrado para páginas específicas */
+/* Header específico para cada página */
 .configuration-page,
 .alertas-page,
 .reportes-page {
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* Responsive Styles MEJORADOS */
+@media (max-width: 768px) {
+  .content-area {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-area {
+    padding: 10px;
+  }
+  
+  .sidebar.mobile {
+    width: 85%;
+    max-width: 300px;
+  }
+}
+
+/* Desktop específico - NO mostrar hamburguesa en desktop */
+@media (min-width: 992px) {
+  .sidebar.desktop {
+    display: block !important;
+  }
+  
+  .main-content {
+    margin-left: 250px !important;
+  }
+  
+  .main-content.expanded {
+    margin-left: 0 !important;
+  }
 }

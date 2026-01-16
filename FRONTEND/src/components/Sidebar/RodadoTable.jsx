@@ -1,29 +1,58 @@
-import React, { useState, useEffect } from 'react'
-import { useApp } from '../../context/AppContext'
+import React, { useState, useEffect, useMemo } from 'react'
 import './RodadoTable.css'
 
-const RodadoTable = ({ onVerVehiculo }) => {
-  const { vehiculos, columnasVisibles } = useApp()
+const RodadoTable = ({ 
+  vehiculos = [], 
+  columnasVisibles = {}, 
+  onVerVehiculo,
+  // Eliminar props no utilizadas o implementarlas
+  onSearch,
+  onSectorFilter,
+  onEstadoFilter,
+  onTipoFilter
+}) => {
   const [filtros, setFiltros] = useState({
     buscar: '',
     sector: '',
     estado: ''
   })
-  const [vehiculosFiltrados, setVehiculosFiltrados] = useState([])
 
-  useEffect(() => {
-    filtrarVehiculos()
-  }, [filtros, vehiculos])
+  // Columnas por defecto
+  const defaultColumnas = {
+    interno: true,
+    anio: true, // Cambiado de 'año' a 'anio' para consistencia
+    dominio: true,
+    modelo: true,
+    'eq-incorporado': false,
+    sector: true,
+    chofer: false,
+    estado: true,
+    observaciones: false,
+    'vtv-vencimiento': false,
+    'vtv-ev': false,
+    'habilitacion-vencimiento': false,
+    'habilitacion-eh': false,
+    'tipo-seguro': false,
+    'seguro-tecnico': false,
+    'seguro-cargas': false
+  }
 
-  const filtrarVehiculos = () => {
+  // Combinar columnas con defaults
+  const columnas = useMemo(() => ({
+    ...defaultColumnas,
+    ...columnasVisibles
+  }), [columnasVisibles])
+
+  // Filtrar vehículos con useMemo para mejor performance
+  const vehiculosFiltrados = useMemo(() => {
     let filtrados = vehiculos
 
     if (filtros.buscar) {
       const busqueda = filtros.buscar.toLowerCase()
       filtrados = filtrados.filter(v => 
-        v.interno.toLowerCase().includes(busqueda) ||
-        v.dominio.toLowerCase().includes(busqueda) ||
-        v.modelo.toLowerCase().includes(busqueda) ||
+        v.interno?.toLowerCase().includes(busqueda) ||
+        v.dominio?.toLowerCase().includes(busqueda) ||
+        v.modelo?.toLowerCase().includes(busqueda) ||
         (v.chofer && v.chofer.toLowerCase().includes(busqueda))
       )
     }
@@ -36,8 +65,8 @@ const RodadoTable = ({ onVerVehiculo }) => {
       filtrados = filtrados.filter(v => v.estado === filtros.estado)
     }
 
-    setVehiculosFiltrados(filtrados)
-  }
+    return filtrados
+  }, [vehiculos, filtros])
 
   const getEstadoClass = (estado) => {
     if (!estado) return ''
@@ -66,6 +95,41 @@ const RodadoTable = ({ onVerVehiculo }) => {
     }
   }
 
+  // Manejar cambios en filtros
+  const handleBuscarChange = (e) => {
+    const value = e.target.value
+    setFiltros(prev => ({ ...prev, buscar: value }))
+    if (onSearch) onSearch(value)
+  }
+
+  const handleSectorChange = (e) => {
+    const value = e.target.value
+    setFiltros(prev => ({ ...prev, sector: value }))
+    if (onSectorFilter) onSectorFilter(value)
+  }
+
+  const handleEstadoChange = (e) => {
+    const value = e.target.value
+    setFiltros(prev => ({ ...prev, estado: value }))
+    if (onEstadoFilter) onEstadoFilter(value)
+  }
+
+  // Extraer sectores únicos para el dropdown
+  const sectoresUnicos = useMemo(() => {
+    const sectores = vehiculos
+      .map(v => v.sector)
+      .filter((sector, index, self) => sector && self.indexOf(sector) === index)
+    return ['', 'Todos los sectores', ...sectores]
+  }, [vehiculos])
+
+  // Extraer estados únicos para el dropdown
+  const estadosUnicos = useMemo(() => {
+    const estados = vehiculos
+      .map(v => v.estado)
+      .filter((estado, index, self) => estado && self.indexOf(estado) === index)
+    return ['', 'Todos los estados', ...estados]
+  }, [vehiculos])
+
   return (
     <div className="rodado-table-container">
       <div className="filter-bar">
@@ -74,27 +138,29 @@ const RodadoTable = ({ onVerVehiculo }) => {
           className="filter-select" 
           placeholder="Buscar..." 
           value={filtros.buscar}
-          onChange={(e) => setFiltros(prev => ({ ...prev, buscar: e.target.value }))}
+          onChange={handleBuscarChange}
         />
         <select 
           className="filter-select"
           value={filtros.sector}
-          onChange={(e) => setFiltros(prev => ({ ...prev, sector: e.target.value }))}
+          onChange={handleSectorChange}
         >
-          <option value="">Todos los sectores</option>
-          <option value="Logística">Logística</option>
-          <option value="Producción">Producción</option>
-          <option value="Administración">Administración</option>
+          {sectoresUnicos.map((sector, index) => (
+            <option key={index} value={index === 0 ? '' : sector}>
+              {sector}
+            </option>
+          ))}
         </select>
         <select 
           className="filter-select"
           value={filtros.estado}
-          onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
+          onChange={handleEstadoChange}
         >
-          <option value="">Todos los estados</option>
-          <option value="Activo">Activo</option>
-          <option value="Mantenimiento">Mantenimiento</option>
-          <option value="Inactivo">Inactivo</option>
+          {estadosUnicos.map((estado, index) => (
+            <option key={index} value={index === 0 ? '' : estado}>
+              {estado}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -102,89 +168,97 @@ const RodadoTable = ({ onVerVehiculo }) => {
         <table className="data-table">
           <thead>
             <tr>
-              {columnasVisibles.interno && <th className="col-interno">INT.</th>}
-              {columnasVisibles.anio && <th className="col-anio">AÑO</th>}
-              {columnasVisibles.dominio && <th className="col-dominio">DOMINIO</th>}
-              {columnasVisibles.modelo && <th className="col-modelo">MODELO</th>}
-              {columnasVisibles['eq-incorporado'] && <th className="col-eq-incorporado">EQ. INCORPORADO</th>}
-              {columnasVisibles.sector && <th className="col-sector">SECTOR</th>}
-              {columnasVisibles.chofer && <th className="col-chofer">CHOFER</th>}
-              {columnasVisibles.estado && <th className="col-estado">ESTADO</th>}
-              {columnasVisibles.observaciones && <th className="col-observaciones">OBSERVACIONES</th>}
-              {columnasVisibles['vtv-vencimiento'] && <th className="col-vtv-vencimiento">VTV VTO.</th>}
-              {columnasVisibles['vtv-ev'] && <th className="col-vtv-ev">VTV EV</th>}
-              {columnasVisibles['habilitacion-vencimiento'] && <th className="col-habilitacion-vencimiento">HAB. VTO.</th>}
-              {columnasVisibles['habilitacion-eh'] && <th className="col-habilitacion-eh">HAB. EH</th>}
-              {columnasVisibles['tipo-seguro'] && <th className="col-tipo-seguro">TIPO SEGURO</th>}
-              {columnasVisibles['seguro-tecnico'] && <th className="col-seguro-tecnico">SEG. TÉCNICO</th>}
-              {columnasVisibles['seguro-cargas'] && <th className="col-seguro-cargas">SEG. CARGAS PEL.</th>}
+              {columnas.interno && <th className="col-interno">INT.</th>}
+              {columnas.anio && <th className="col-anio">AÑO</th>}
+              {columnas.dominio && <th className="col-dominio">DOMINIO</th>}
+              {columnas.modelo && <th className="col-modelo">MODELO</th>}
+              {columnas['eq-incorporado'] && <th className="col-eq-incorporado">EQ. INCORPORADO</th>}
+              {columnas.sector && <th className="col-sector">SECTOR</th>}
+              {columnas.chofer && <th className="col-chofer">CHOFER</th>}
+              {columnas.estado && <th className="col-estado">ESTADO</th>}
+              {columnas.observaciones && <th className="col-observaciones">OBSERVACIONES</th>}
+              {columnas['vtv-vencimiento'] && <th className="col-vtv-vencimiento">VTV VTO.</th>}
+              {columnas['vtv-ev'] && <th className="col-vtv-ev">VTV EV</th>}
+              {columnas['habilitacion-vencimiento'] && <th className="col-habilitacion-vencimiento">HAB. VTO.</th>}
+              {columnas['habilitacion-eh'] && <th className="col-habilitacion-eh">HAB. EH</th>}
+              {columnas['tipo-seguro'] && <th className="col-tipo-seguro">TIPO SEGURO</th>}
+              {columnas['seguro-tecnico'] && <th className="col-seguro-tecnico">SEG. TÉCNICO</th>}
+              {columnas['seguro-cargas'] && <th className="col-seguro-cargas">SEG. CARGAS PEL.</th>}
               <th className="col-acciones">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
-            {vehiculosFiltrados.map(vehiculo => (
-              <tr key={vehiculo.id}>
-                {columnasVisibles.interno && <td className="col-interno">{vehiculo.interno}</td>}
-                {columnasVisibles.anio && <td className="col-anio">{vehiculo.anio}</td>}
-                {columnasVisibles.dominio && <td className="col-dominio">{vehiculo.dominio}</td>}
-                {columnasVisibles.modelo && <td className="col-modelo">{vehiculo.modelo}</td>}
-                {columnasVisibles['eq-incorporado'] && <td className="col-eq-incorporado">{vehiculo.eqIncorporado || ''}</td>}
-                {columnasVisibles.sector && <td className="col-sector">{vehiculo.sector}</td>}
-                {columnasVisibles.chofer && <td className="col-chofer">{vehiculo.chofer || ''}</td>}
-                {columnasVisibles.estado && (
-                  <td className="col-estado">
-                    <span className={`status-badge ${getEstadoClass(vehiculo.estado)}`}>
-                      {vehiculo.estado}
-                    </span>
+            {vehiculosFiltrados.length > 0 ? (
+              vehiculosFiltrados.map(vehiculo => (
+                <tr key={vehiculo.id}>
+                  {columnas.interno && <td className="col-interno">{vehiculo.interno}</td>}
+                  {columnas.anio && <td className="col-anio">{vehiculo.anio}</td>}
+                  {columnas.dominio && <td className="col-dominio">{vehiculo.dominio}</td>}
+                  {columnas.modelo && <td className="col-modelo">{vehiculo.modelo}</td>}
+                  {columnas['eq-incorporado'] && <td className="col-eq-incorporado">{vehiculo.eqIncorporado || ''}</td>}
+                  {columnas.sector && <td className="col-sector">{vehiculo.sector}</td>}
+                  {columnas.chofer && <td className="col-chofer">{vehiculo.chofer || ''}</td>}
+                  {columnas.estado && (
+                    <td className="col-estado">
+                      <span className={`status-badge ${getEstadoClass(vehiculo.estado)}`}>
+                        {vehiculo.estado}
+                      </span>
+                    </td>
+                  )}
+                  {columnas.observaciones && <td className="col-observaciones">{vehiculo.observaciones || ''}</td>}
+                  {columnas['vtv-vencimiento'] && <td className="col-vtv-vencimiento">{formatearFecha(vehiculo.vtvVencimiento)}</td>}
+                  {columnas['vtv-ev'] && (
+                    <td className="col-vtv-ev">
+                      <span className={`status-badge ${getEstadoClass(vehiculo.vtvEstado)}`}>
+                        {vehiculo.vtvEstado || ''}
+                      </span>
+                    </td>
+                  )}
+                  {columnas['habilitacion-vencimiento'] && <td className="col-habilitacion-vencimiento">{formatearFecha(vehiculo.habilitacionVencimiento)}</td>}
+                  {columnas['habilitacion-eh'] && (
+                    <td className="col-habilitacion-eh">
+                      <span className={`status-badge ${getEstadoClass(vehiculo.habilitacionEstado)}`}>
+                        {vehiculo.habilitacionEstado || ''}
+                      </span>
+                    </td>
+                  )}
+                  {columnas['tipo-seguro'] && <td className="col-tipo-seguro">{vehiculo.tipoSeguro || ''}</td>}
+                  {columnas['seguro-tecnico'] && (
+                    <td className="col-seguro-tecnico">
+                      <span className={`status-badge ${getEstadoClass(vehiculo.seguroTecnico)}`}>
+                        {vehiculo.seguroTecnico || ''}
+                      </span>
+                    </td>
+                  )}
+                  {columnas['seguro-cargas'] && (
+                    <td className="col-seguro-cargas">
+                      <span className={`status-badge ${getEstadoClass(vehiculo.seguroCargas)}`}>
+                        {vehiculo.seguroCargas || ''}
+                      </span>
+                    </td>
+                  )}
+                  <td className="col-acciones">
+                    <div className="action-buttons">
+                      <button 
+                        className="icon-btn" 
+                        title="Ver"
+                        onClick={() => onVerVehiculo && onVerVehiculo(vehiculo)}
+                      >
+                        👁️
+                      </button>
+                      <button className="icon-btn" title="Editar">✏️</button>
+                      <button className="icon-btn" title="Documentación">📄</button>
+                    </div>
                   </td>
-                )}
-                {columnasVisibles.observaciones && <td className="col-observaciones">{vehiculo.observaciones || ''}</td>}
-                {columnasVisibles['vtv-vencimiento'] && <td className="col-vtv-vencimiento">{formatearFecha(vehiculo.vtvVencimiento)}</td>}
-                {columnasVisibles['vtv-ev'] && (
-                  <td className="col-vtv-ev">
-                    <span className={`status-badge ${getEstadoClass(vehiculo.vtvEstado)}`}>
-                      {vehiculo.vtvEstado || ''}
-                    </span>
-                  </td>
-                )}
-                {columnasVisibles['habilitacion-vencimiento'] && <td className="col-habilitacion-vencimiento">{formatearFecha(vehiculo.habilitacionVencimiento)}</td>}
-                {columnasVisibles['habilitacion-eh'] && (
-                  <td className="col-habilitacion-eh">
-                    <span className={`status-badge ${getEstadoClass(vehiculo.habilitacionEstado)}`}>
-                      {vehiculo.habilitacionEstado || ''}
-                    </span>
-                  </td>
-                )}
-                {columnasVisibles['tipo-seguro'] && <td className="col-tipo-seguro">{vehiculo.tipoSeguro || ''}</td>}
-                {columnasVisibles['seguro-tecnico'] && (
-                  <td className="col-seguro-tecnico">
-                    <span className={`status-badge ${getEstadoClass(vehiculo.seguroTecnico)}`}>
-                      {vehiculo.seguroTecnico || ''}
-                    </span>
-                  </td>
-                )}
-                {columnasVisibles['seguro-cargas'] && (
-                  <td className="col-seguro-cargas">
-                    <span className={`status-badge ${getEstadoClass(vehiculo.seguroCargas)}`}>
-                      {vehiculo.seguroCargas || ''}
-                    </span>
-                  </td>
-                )}
-                <td className="col-acciones">
-                  <div className="action-buttons">
-                    <button 
-                      className="icon-btn" 
-                      title="Ver"
-                      onClick={() => onVerVehiculo(vehiculo)}
-                    >
-                      👁️
-                    </button>
-                    <button className="icon-btn" title="Editar">✏️</button>
-                    <button className="icon-btn" title="Documentación">📄</button>
-                  </div>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="100%" className="no-data">
+                  No se encontraron vehículos con los filtros aplicados
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

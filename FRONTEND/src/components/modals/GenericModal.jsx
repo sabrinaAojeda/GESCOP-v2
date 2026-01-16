@@ -1,3 +1,4 @@
+// src/components/Common/GenericModal.jsx
 import React from 'react'
 import './ModalVehiculo.css'
 
@@ -16,7 +17,9 @@ const GenericModal = ({ title, children, onClose, size = 'medium' }) => {
           <h2 className="modal-vehiculo-title">{title}</h2>
           <button className="modal-vehiculo-close" onClick={onClose}>×</button>
         </div>
-        {children}
+        <div className="modal-vehiculo-form">
+          {children}
+        </div>
       </div>
     </div>
   )

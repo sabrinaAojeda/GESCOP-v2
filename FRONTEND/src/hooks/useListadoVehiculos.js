@@ -1,146 +1,327 @@
-// src/hooks/useListadoVehiculos.js
-import { useState, useEffect } from 'react'
+// src/hooks/useListadoVehiculos.js - VERSIÓN CORREGIDA
+import { useState, useEffect, useRef } from 'react';
+import { vehiculoService } from '../services/vehiculoService';
+
+// Logger específico para hooks
+const HookLogger = {
+  info: (hookName, message, data = null) => {
+    console.info(`🎯 [${hookName}] ${message}`, data || '');
+  },
+  error: (hookName, message, data = null) => {
+    console.error(`💥 [${hookName}] ${message}`, data || '');
+  },
+  debug: (hookName, message, data = null) => {
+    console.log(`🔧 [${hookName}] ${message}`, data || '');
+  }
+};
 
 export const useListadoVehiculos = () => {
-  const [vehiculos, setVehiculos] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const HOOK_NAME = 'useListadoVehiculos';
+  const [vehiculos, setVehiculos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    per_page: 50,
+    total: 0,
+    total_pages: 0
+  });
+  const [filters, setFilters] = useState({
+    page: 1,
+    limit: 50,
+    search: '',
+    sector: '',
+    estado: '',
+    tipo: ''
+  });
 
-  useEffect(() => {
-    const loadVehiculos = async () => {
-      try {
-        setLoading(true)
-        // Simulamos datos mock basados en la estructura del backend
-        setTimeout(() => {
-          const mockData = [
-            {
-              id: 1,
-              interno: "001",
-              año: 2023,
-              dominio: "AB-123-CD",
-              modelo: "Toyota Hilux SRV",
-              eq_incorporado: "GPS, Radio",
-              sector: "Logística",
-              chofer: "Juan Pérez",
-              estado: "Activo",
-              observaciones: "Nuevo ingreso",
-              vtv_vencimiento: "2024-06-15",
-              vtv_estado: "Vigente",
-              hab_vencimiento: "2024-12-20",
-              hab_estado: "Vigente",
-              seguro_vencimiento: "2024-05-30",
-              tipo: "Rodado",
-              documentos: [
-                { 
-                  id: 1, 
-                  tipo: "Seguro", 
-                  vencimiento: "2024-06-15", 
-                  estado: "Vigente", 
-                  archivo: "seguro_001.pdf" 
-                }
-              ]
-            },
-            {
-              id: 2,
-              interno: "002",
-              año: 2022,
-              dominio: "EF-456-GH",
-              modelo: "Ford Ranger XLT",
-              eq_incorporado: "Radio",
-              sector: "Producción",
-              chofer: "",
-              estado: "Mantenimiento",
-              observaciones: "En taller por reparación",
-              vtv_vencimiento: "2024-04-10",
-              vtv_estado: "Por vencer",
-              hab_vencimiento: "2024-08-15",
-              hab_estado: "Vigente",
-              seguro_vencimiento: "2024-07-20",
-              tipo: "Rodado",
-              documentos: []
-            },
-            {
-              id: 3,
-              interno: "003",
-              año: 2021,
-              dominio: "IJ-789-KL",
-              modelo: "Mercedes-Benz Sprinter",
-              eq_incorporado: "GPS, Radio, Cámara",
-              sector: "Logística",
-              chofer: "María García",
-              estado: "Activo",
-              observaciones: "",
-              vtv_vencimiento: "2024-03-01",
-              vtv_estado: "Vencido",
-              hab_vencimiento: "2024-09-30",
-              hab_estado: "Vigente",
-              seguro_vencimiento: "2024-08-15",
-              tipo: "Rodado",
-              documentos: [
-                { 
-                  id: 3, 
-                  tipo: "Seguro", 
-                  vencimiento: "2024-09-30", 
-                  estado: "Vigente", 
-                  archivo: "seguro_003.pdf" 
-                }
-              ]
-            },
-            {
-              id: 4,
-              interno: "M001",
-              año: 2020,
-              dominio: "MA-001-AA",
-              modelo: "Cargadora CAT 926M",
-              eq_incorporado: "GPS, Balde",
-              sector: "Producción",
-              chofer: "Carlos López",
-              estado: "Activo",
-              observaciones: "Máquina principal",
-              vtv_vencimiento: "",
-              vtv_estado: "No requiere",
-              hab_vencimiento: "2024-11-30",
-              hab_estado: "Vigente",
-              seguro_vencimiento: "2024-10-15",
-              tipo: "Maquinaria",
-              documentos: []
-            }
-          ]
-          setVehiculos(mockData)
-          setLoading(false)
-        }, 1000)
-      } catch (err) {
-        setError(err.message)
-        setLoading(false)
+  const mountedRef = useRef(true);
+
+  // Función para procesar la respuesta del backend - CORREGIDA
+  const procesarRespuestaVehiculos = (response) => {
+    HookLogger.debug(HOOK_NAME, 'Procesando respuesta del backend', response);
+    
+    // ✅ CORREGIDO: Formato que realmente usa el backend
+    if (response.success !== undefined && response.data) {
+      // Formato: { success: true, data: { vehiculos: [], pagination: {} } }
+      if (response.data.pagination) {
+        setPagination(response.data.pagination);
+      }
+      return response.data.vehiculos || [];
+    } else if (response.data && response.data.vehiculos) {
+      // Formato alternativo: { data: { vehiculos: [] } }
+      return response.data.vehiculos || [];
+    } else if (Array.isArray(response)) {
+      // Array directo
+      return response;
+    } else {
+      HookLogger.warn(HOOK_NAME, 'Formato de respuesta inesperado', response);
+      return [];
+    }
+  };
+
+  // Cargar vehículos desde el backend
+  const loadVehiculos = async (newFilters = {}) => {
+    if (loading) {
+      HookLogger.debug(HOOK_NAME, 'Load bloqueado - ya está cargando');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const updatedFilters = { ...filters, ...newFilters, limit: 50 };
+      HookLogger.info(HOOK_NAME, 'Iniciando carga de vehículos', updatedFilters);
+      
+      const response = await vehiculoService.getVehiculos(updatedFilters);
+      
+      if (mountedRef.current) {
+        // Procesar la respuesta de manera robusta
+        const vehiculosAdaptados = procesarRespuestaVehiculos(response);
+        
+        HookLogger.info(HOOK_NAME, `Carga completada: ${vehiculosAdaptados.length} vehículos`);
+        setVehiculos(vehiculosAdaptados);
+        setFilters(updatedFilters);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        const errorMsg = err.response?.data?.message || err.message || 'Error al cargar el listado de vehículos';
+        
+        HookLogger.error(HOOK_NAME, 'Error en carga', {
+          error: err.message,
+          userMessage: errorMsg,
+          status: err.response?.status,
+          url: err.config?.url
+        });
+        
+        setError(`Error ${err.response?.status}: ${errorMsg}`);
+        
+        // Fallback a datos mock solo en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+          HookLogger.info(HOOK_NAME, 'Usando datos mock como fallback');
+          setVehiculos(getMockVehiculos());
+        } else {
+          setVehiculos([]);
+        }
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
       }
     }
+  };
 
-    loadVehiculos()
-  }, [])
-
-  const agregarVehiculo = (nuevoVehiculo) => {
-    const vehiculoConId = {
-      ...nuevoVehiculo,
-      id: Date.now(),
-      documentos: []
+  // Crear vehículo
+  const agregarVehiculo = async (vehiculoData) => {
+    if (loading) {
+      HookLogger.debug(HOOK_NAME, 'Creación bloqueada - operación en curso');
+      return { success: false, error: 'Ya hay una operación en curso' };
     }
-    setVehiculos(prev => [...prev, vehiculoConId])
-  }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      HookLogger.info(HOOK_NAME, 'Creando nuevo vehículo', { interno: vehiculoData.interno });
+      const resultado = await vehiculoService.createVehiculo(vehiculoData);
+      
+      if (resultado.success) {
+        // Recargar después de crear
+        HookLogger.debug(HOOK_NAME, 'Recargando lista después de creación');
+        await loadVehiculos();
+        
+        HookLogger.info(HOOK_NAME, 'Vehículo creado exitosamente');
+        return { success: true };
+      } else {
+        const errorMsg = resultado.message || 'Error al crear el vehículo';
+        setError(errorMsg);
+        return { success: false, error: errorMsg };
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al crear el vehículo';
+      HookLogger.error(HOOK_NAME, 'Error al crear vehículo', {
+        interno: vehiculoData.interno,
+        error: err.message,
+        status: err.response?.status
+      });
+      
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const actualizarVehiculo = (id, datosActualizados) => {
-    setVehiculos(prev => prev.map(v => v.id === id ? { ...v, ...datosActualizados } : v))
-  }
+  // Actualizar vehículo
+  const actualizarVehiculo = async (interno, vehiculoData) => {
+    if (loading) {
+      HookLogger.debug(HOOK_NAME, 'Actualización bloqueada - operación en curso');
+      return { success: false, error: 'Ya hay una operación en curso' };
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      HookLogger.info(HOOK_NAME, 'Actualizando vehículo', { interno });
+      const resultado = await vehiculoService.updateVehiculo(interno, vehiculoData);
+      
+      if (resultado.success) {
+        // Recargar después de actualizar
+        HookLogger.debug(HOOK_NAME, 'Recargando lista después de actualización');
+        await loadVehiculos();
+        
+        HookLogger.info(HOOK_NAME, 'Vehículo actualizado exitosamente');
+        return { success: true };
+      } else {
+        const errorMsg = resultado.message || 'Error al actualizar el vehículo';
+        setError(errorMsg);
+        return { success: false, error: errorMsg };
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al actualizar el vehículo';
+      HookLogger.error(HOOK_NAME, 'Error al actualizar vehículo', {
+        interno,
+        error: err.message,
+        status: err.response?.status
+      });
+      
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const eliminarVehiculo = (id) => {
-    setVehiculos(prev => prev.filter(v => v.id !== id))
-  }
+  // Eliminar vehículo
+  const eliminarVehiculo = async (interno) => {
+    if (loading) {
+      HookLogger.debug(HOOK_NAME, 'Eliminación bloqueada - operación en curso');
+      return { success: false, error: 'Ya hay una operación en curso' };
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      HookLogger.info(HOOK_NAME, 'Eliminando vehículo', { interno });
+      const resultado = await vehiculoService.deleteVehiculo(interno);
+      
+      if (resultado.success) {
+        // Recargar después de eliminar
+        HookLogger.debug(HOOK_NAME, 'Recargando lista después de eliminación');
+        await loadVehiculos();
+        
+        HookLogger.info(HOOK_NAME, 'Vehículo eliminado exitosamente');
+        return { success: true };
+      } else {
+        const errorMsg = resultado.message || 'Error al eliminar el vehículo';
+        setError(errorMsg);
+        return { success: false, error: errorMsg };
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al eliminar el vehículo';
+      HookLogger.error(HOOK_NAME, 'Error al eliminar vehículo', {
+        interno,
+        error: err.message,
+        status: err.response?.status
+      });
+      
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Buscar vehículos
+  const handleSearch = (searchTerm) => {
+    if (!loading) {
+      HookLogger.debug(HOOK_NAME, 'Aplicando filtro de búsqueda', { searchTerm });
+      loadVehiculos({ search: searchTerm, page: 1 });
+    }
+  };
+
+  // Filtrar por sector
+  const handleSectorFilter = (sector) => {
+    if (!loading) {
+      HookLogger.debug(HOOK_NAME, 'Aplicando filtro de sector', { sector });
+      loadVehiculos({ sector, page: 1 });
+    }
+  };
+
+  // Filtrar por estado
+  const handleEstadoFilter = (estado) => {
+    if (!loading) {
+      HookLogger.debug(HOOK_NAME, 'Aplicando filtro de estado', { estado });
+      loadVehiculos({ estado, page: 1 });
+    }
+  };
+
+  // Filtrar por tipo
+  const handleTipoFilter = (tipo) => {
+    if (!loading) {
+      HookLogger.debug(HOOK_NAME, 'Aplicando filtro de tipo', { tipo });
+      loadVehiculos({ tipo, page: 1 });
+    }
+  };
+
+  // Cambiar página
+  const handlePageChange = (newPage) => {
+    if (!loading) {
+      HookLogger.debug(HOOK_NAME, 'Cambiando página', { newPage });
+      loadVehiculos({ page: newPage });
+    }
+  };
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    mountedRef.current = true;
+    HookLogger.info(HOOK_NAME, 'Hook montado - iniciando carga inicial');
+    loadVehiculos();
+
+    return () => {
+      mountedRef.current = false;
+      HookLogger.debug(HOOK_NAME, 'Hook desmontado');
+    };
+  }, []);
 
   return {
-    vehiculos,
+    vehiculos: Array.isArray(vehiculos) ? vehiculos : [],
     loading,
     error,
+    pagination,
+    filters,
     agregarVehiculo,
     actualizarVehiculo,
-    eliminarVehiculo
+    eliminarVehiculo,
+    handleSearch,
+    handleSectorFilter,
+    handleEstadoFilter,
+    handleTipoFilter,
+    handlePageChange,
+    loadVehiculos
+  };
+};
+
+// Datos mock como fallback
+const getMockVehiculos = () => [
+  {
+    interno: "001",
+    año: 2023,
+    dominio: "AB-123-CD",
+    modelo: "Toyota Hilux SRV",
+    eq_incorporado: "GPS, Radio",
+    sector: "Logística",
+    chofer: "Juan Pérez",
+    estado: "Activo",
+    observaciones: "Nuevo ingreso",
+    vtv_vencimiento: "2024-06-15",
+    vtv_estado: "Vigente",
+    hab_vencimiento: "2024-12-20",
+    hab_estado: "Vigente",
+    seguro_vencimiento: "2024-05-30",
+    tipo: "Rodado"
   }
-}
+];

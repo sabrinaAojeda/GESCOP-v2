@@ -26,6 +26,16 @@ class Vehiculo {
 
     // Crear vehículo
     public function crear() {
+        // Verificar si el interno ya existe
+        $check_query = "SELECT interno FROM " . $this->table_name . " WHERE interno = :interno";
+        $check_stmt = $this->conn->prepare($check_query);
+        $check_stmt->bindParam(":interno", $this->interno);
+        $check_stmt->execute();
+        
+        if($check_stmt->rowCount() > 0) {
+            return false; // Interno ya existe
+        }
+
         $query = "INSERT INTO " . $this->table_name . " 
                 SET interno=:interno, año=:año, dominio=:dominio, modelo=:modelo, 
                     eq_incorporado=:eq_incorporado, sector=:sector, chofer=:chofer, 
@@ -34,6 +44,19 @@ class Vehiculo {
                     hab_estado=:hab_estado, seguro_vencimiento=:seguro_vencimiento, tipo=:tipo";
         
         $stmt = $this->conn->prepare($query);
+        
+        // Sanitizar y bind parameters
+        $this->interno = htmlspecialchars(strip_tags($this->interno));
+        $this->dominio = htmlspecialchars(strip_tags($this->dominio));
+        $this->modelo = htmlspecialchars(strip_tags($this->modelo));
+        $this->eq_incorporado = $this->eq_incorporado ? htmlspecialchars(strip_tags($this->eq_incorporado)) : '';
+        $this->sector = $this->sector ? htmlspecialchars(strip_tags($this->sector)) : '';
+        $this->chofer = $this->chofer ? htmlspecialchars(strip_tags($this->chofer)) : '';
+        $this->estado = htmlspecialchars(strip_tags($this->estado));
+        $this->observaciones = $this->observaciones ? htmlspecialchars(strip_tags($this->observaciones)) : '';
+        $this->vtv_estado = $this->vtv_estado ? htmlspecialchars(strip_tags($this->vtv_estado)) : '';
+        $this->hab_estado = $this->hab_estado ? htmlspecialchars(strip_tags($this->hab_estado)) : '';
+        $this->tipo = $this->tipo ? htmlspecialchars(strip_tags($this->tipo)) : 'Rodado';
         
         // Bind parameters
         $stmt->bindParam(":interno", $this->interno);
@@ -55,6 +78,9 @@ class Vehiculo {
         if ($stmt->execute()) {
             return true;
         }
+        
+        // Mostrar error detallado para debugging
+        error_log("Error al crear vehículo: " . implode(", ", $stmt->errorInfo()));
         return false;
     }
 
@@ -108,6 +134,19 @@ class Vehiculo {
         
         $stmt = $this->conn->prepare($query);
         
+        // Sanitizar datos
+        $this->interno = htmlspecialchars(strip_tags($this->interno));
+        $this->dominio = htmlspecialchars(strip_tags($this->dominio));
+        $this->modelo = htmlspecialchars(strip_tags($this->modelo));
+        $this->eq_incorporado = $this->eq_incorporado ? htmlspecialchars(strip_tags($this->eq_incorporado)) : '';
+        $this->sector = $this->sector ? htmlspecialchars(strip_tags($this->sector)) : '';
+        $this->chofer = $this->chofer ? htmlspecialchars(strip_tags($this->chofer)) : '';
+        $this->estado = htmlspecialchars(strip_tags($this->estado));
+        $this->observaciones = $this->observaciones ? htmlspecialchars(strip_tags($this->observaciones)) : '';
+        $this->vtv_estado = $this->vtv_estado ? htmlspecialchars(strip_tags($this->vtv_estado)) : '';
+        $this->hab_estado = $this->hab_estado ? htmlspecialchars(strip_tags($this->hab_estado)) : '';
+        $this->tipo = $this->tipo ? htmlspecialchars(strip_tags($this->tipo)) : 'Rodado';
+        
         $stmt->bindParam(":interno", $this->interno);
         $stmt->bindParam(":año", $this->año);
         $stmt->bindParam(":dominio", $this->dominio);
@@ -127,6 +166,8 @@ class Vehiculo {
         if ($stmt->execute()) {
             return true;
         }
+        
+        error_log("Error al actualizar vehículo: " . implode(", ", $stmt->errorInfo()));
         return false;
     }
 
@@ -139,7 +180,100 @@ class Vehiculo {
         if ($stmt->execute()) {
             return true;
         }
+        
+        error_log("Error al eliminar vehículo: " . implode(", ", $stmt->errorInfo()));
         return false;
+    }
+
+    // ✅ MÉTODOS NUEVOS QUE FALTAN - PARA FILTROS Y PAGINACIÓN
+    public function leerConFiltros($search = '', $sector = '', $estado = '', $tipo = '', $limit = 10, $offset = 0) {
+        $query = "SELECT * FROM " . $this->table_name . " WHERE 1=1";
+        
+        if (!empty($search)) {
+            $query .= " AND (interno LIKE :search OR dominio LIKE :search OR modelo LIKE :search OR chofer LIKE :search)";
+        }
+        
+        if (!empty($sector)) {
+            $query .= " AND sector = :sector";
+        }
+        
+        if (!empty($estado)) {
+            $query .= " AND estado = :estado";
+        }
+
+        if (!empty($tipo)) {
+            $query .= " AND tipo = :tipo";
+        }
+        
+        $query .= " ORDER BY interno LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->conn->prepare($query);
+        
+        if (!empty($search)) {
+            $search_term = "%$search%";
+            $stmt->bindParam(":search", $search_term);
+        }
+        
+        if (!empty($sector)) {
+            $stmt->bindParam(":sector", $sector);
+        }
+        
+        if (!empty($estado)) {
+            $stmt->bindParam(":estado", $estado);
+        }
+
+        if (!empty($tipo)) {
+            $stmt->bindParam(":tipo", $tipo);
+        }
+        
+        $stmt->bindParam(":limit", $limit, PDO::PARAM_INT);
+        $stmt->bindParam(":offset", $offset, PDO::PARAM_INT);
+        
+        $stmt->execute();
+        return $stmt;
+    }
+
+    public function contarConFiltros($search = '', $sector = '', $estado = '', $tipo = '') {
+        $query = "SELECT COUNT(*) as total FROM " . $this->table_name . " WHERE 1=1";
+        
+        if (!empty($search)) {
+            $query .= " AND (interno LIKE :search OR dominio LIKE :search OR modelo LIKE :search OR chofer LIKE :search)";
+        }
+        
+        if (!empty($sector)) {
+            $query .= " AND sector = :sector";
+        }
+        
+        if (!empty($estado)) {
+            $query .= " AND estado = :estado";
+        }
+
+        if (!empty($tipo)) {
+            $query .= " AND tipo = :tipo";
+        }
+        
+        $stmt = $this->conn->prepare($query);
+        
+        if (!empty($search)) {
+            $search_term = "%$search%";
+            $stmt->bindParam(":search", $search_term);
+        }
+        
+        if (!empty($sector)) {
+            $stmt->bindParam(":sector", $sector);
+        }
+        
+        if (!empty($estado)) {
+            $stmt->bindParam(":estado", $estado);
+        }
+
+        if (!empty($tipo)) {
+            $stmt->bindParam(":tipo", $tipo);
+        }
+        
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row['total'];
     }
 }
 ?>
