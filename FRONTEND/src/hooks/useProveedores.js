@@ -1,11 +1,9 @@
-// FRONTEND/src/hooks/useProveedores.js - VERSIÓN CORREGIDA CON IMPORTACIÓN ESTANDARIZADA
+// FRONTEND/src/hooks/useProveedores.js - VERSIÓN ACTUALIZADA
 import { useState, useEffect, useRef } from 'react';
-import { proveedoresService } from '../services'; // Importar desde el index unificado
+import { proveedoresService } from '../services';
 
-// VARIABLE GLOBAL - fuera del hook para controlar carga única
 let globalLoadStarted = false;
 
-// Logger específico para el hook
 const HookLogger = {
   info: (message, data = null) => console.info(`🎯 [useProveedores] ${message}`, data || ''),
   error: (message, data = null) => console.error(`💥 [useProveedores] ${message}`, data || ''),
@@ -21,27 +19,30 @@ export const useProveedores = () => {
     limit: 10,
     search: '',
     rubro: '',
+    sector_servicio: '',
     estado: '',
-    localidad: ''
+    localidad: '',
+    tiene_seguro_RT: ''
   });
+  
   const [pagination, setPagination] = useState({
     current_page: 1,
     per_page: 10,
     total: 0,
     total_pages: 0
   });
+  
   const [filterOptions, setFilterOptions] = useState({
     rubros: ['Todos los rubros'],
+    sectores_servicio: ['Todos los sectores'],
     localidades: ['Todas las localidades'],
     estados: ['Todos los estados']
   });
 
-  // Refs para controlar estado que no causa re-render
   const mountedRef = useRef(true);
   const loadAttemptsRef = useRef(0);
   const initialLoadDoneRef = useRef(false);
 
-  // Función para procesar respuesta del backend
   const procesarRespuestaProveedores = (response) => {
     HookLogger.debug('Procesando respuesta del backend', response);
     
@@ -63,9 +64,7 @@ export const useProveedores = () => {
     }
   };
 
-  // Cargar proveedores
   const loadProveedores = async (newFilters = {}) => {
-    // PROTECCIÓN MÁXIMA CONTRA BUCLE
     if (loading) {
       HookLogger.debug('Load bloqueado: ya está cargando');
       return;
@@ -83,7 +82,13 @@ export const useProveedores = () => {
     setError(null);
     
     try {
-      const updatedFilters = { ...filters, ...newFilters };
+      const updatedFilters = { 
+        ...filters, 
+        ...newFilters,
+        // Incluir filtro de seguro RT
+        tiene_seguro_RT: newFilters.tiene_seguro_RT || ''
+      };
+      
       HookLogger.info('Cargando proveedores con filtros:', updatedFilters);
       
       const response = await proveedoresService.getProveedores(updatedFilters);
@@ -91,11 +96,38 @@ export const useProveedores = () => {
       if (mountedRef.current) {
         const { data, pagination: paginationData, filterOptions: options } = procesarRespuestaProveedores(response);
         
-        setProveedores(data);
+        // Procesar datos para el frontend
+        const proveedoresProcesados = data.map(prov => ({
+          ...prov,
+          // Asegurar campos nuevos
+          sector_servicio: prov.sector_servicio || prov.rubro || '',
+          servicio: prov.servicio || '',
+          localidad: prov.localidad || '',
+          seguro_RT: prov.seguro_RT !== undefined ? prov.seguro_RT : false,
+          seguro_vida: prov.seguro_vida || false,
+          habilitacion_personal: prov.habilitacion_personal || '',
+          habilitacion_vehiculo: prov.habilitacion_vehiculo || '',
+          personal_contratado: prov.personal_contratado || 0,
+          documentos: prov.documentos || 0,
+          vencimiento_documentacion: prov.vencimiento_documentacion || 
+                                     prov.proximo_vencimiento || 
+                                     new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
+        }));
+        
+        setProveedores(proveedoresProcesados);
         setPagination(paginationData || pagination);
         setFilters(updatedFilters);
-        if (options) setFilterOptions(options);
-        HookLogger.info(`Proveedores cargados exitosamente: ${data.length} registros`);
+        
+        if (options) {
+          setFilterOptions({
+            rubros: ['Todos los rubros', ...(options.rubros || [])],
+            sectores_servicio: ['Todos los sectores', ...(options.sectores_servicio || [])],
+            localidades: ['Todas las localidades', ...(options.localidades || [])],
+            estados: ['Todos los estados', ...(options.estados || [])]
+          });
+        }
+        
+        HookLogger.info(`Proveedores cargados: ${proveedoresProcesados.length} registros`);
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -106,6 +138,45 @@ export const useProveedores = () => {
           status: err.response?.status,
           url: err.config?.url
         });
+        
+        // Datos de ejemplo para desarrollo
+        if (import.meta.env.DEV) {
+          const mockData = [
+            {
+              id: 'PROV-001',
+              codigo: 'PROV-001',
+              razon_social: 'Seguridad Total S.A.',
+              cuit: '30-12345678-9',
+              rubro: 'Servicios de Vigilancia',
+              sector_servicio: 'Seguridad',
+              servicio: 'Vigilancia de Plantas',
+              direccion: 'Av. Siempre Viva 123',
+              localidad: 'Capital Federal',
+              provincia: 'Buenos Aires',
+              telefono: '011-4789-1234',
+              email: 'contacto@seguridadtotal.com',
+              contacto_nombre: 'Carlos Rodríguez',
+              contacto_cargo: 'Gerente Comercial',
+              estado: 'Activo',
+              seguro_RT: true,
+              seguro_vida: true,
+              habilitacion_personal: 'Vigente hasta 2024-12-31',
+              habilitacion_vehiculo: 'Vigente hasta 2024-11-30',
+              personal_contratado: 15,
+              documentos: 8,
+              vencimiento_documentacion: '2024-06-15'
+            }
+          ];
+          
+          setProveedores(mockData);
+          setPagination({
+            current_page: 1,
+            per_page: 10,
+            total: mockData.length,
+            total_pages: 1
+          });
+          setError(null);
+        }
       }
     } finally {
       if (mountedRef.current) {
@@ -114,7 +185,7 @@ export const useProveedores = () => {
     }
   };
 
-  // Crear proveedor
+  // Crear proveedor con campos extendidos
   const createProveedor = async (proveedorData) => {
     if (loading) return { success: false, error: 'Ya hay una operación en curso' };
     
@@ -123,10 +194,20 @@ export const useProveedores = () => {
     
     try {
       HookLogger.info('Creando proveedor:', proveedorData);
-      const resultado = await proveedoresService.createProveedor(proveedorData);
+      
+      // Preparar datos para el backend
+      const datosParaEnviar = {
+        ...proveedorData,
+        // Asegurar campos booleanos
+        seguro_RT: Boolean(proveedorData.seguro_RT),
+        seguro_vida: Boolean(proveedorData.seguro_vida),
+        // Generar código si no existe
+        codigo: proveedorData.codigo || `PROV-${Date.now().toString().slice(-6)}`
+      };
+      
+      const resultado = await proveedoresService.createProveedor(datosParaEnviar);
       
       if (resultado.success) {
-        // Recargar después de crear (pero con protección)
         if (loadAttemptsRef.current < 3) {
           await loadProveedores();
         }
@@ -160,10 +241,17 @@ export const useProveedores = () => {
     
     try {
       HookLogger.info(`Actualizando proveedor ID: ${id}`, proveedorData);
-      const resultado = await proveedoresService.updateProveedor(id, proveedorData);
+      
+      const datosParaEnviar = {
+        id,
+        ...proveedorData,
+        seguro_RT: Boolean(proveedorData.seguro_RT),
+        seguro_vida: Boolean(proveedorData.seguro_vida)
+      };
+      
+      const resultado = await proveedoresService.updateProveedor(id, datosParaEnviar);
       
       if (resultado.success) {
-        // Recargar después de actualizar (perto con protección)
         if (loadAttemptsRef.current < 3) {
           await loadProveedores();
         }
@@ -201,7 +289,6 @@ export const useProveedores = () => {
       const resultado = await proveedoresService.deleteProveedor(id);
       
       if (resultado.success) {
-        // Recargar después de eliminar (perto con protección)
         if (loadAttemptsRef.current < 3) {
           await loadProveedores();
         }
@@ -227,55 +314,64 @@ export const useProveedores = () => {
     }
   };
 
-  // Cambiar página
-  const handlePageChange = (newPage) => {
-    if (!loading && loadAttemptsRef.current < 3) {
-      loadProveedores({ page: newPage });
-    }
-  };
-
-  // Buscar proveedores
+  // Filtros específicos
   const handleSearch = (searchTerm) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ search: searchTerm, page: 1 });
     }
   };
 
-  // Filtrar por rubro
   const handleRubroFilter = (rubro) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ rubro, page: 1 });
     }
   };
 
-  // Filtrar por estado
+  const handleSectorServicioFilter = (sector) => {
+    if (!loading && loadAttemptsRef.current < 3) {
+      loadProveedores({ sector_servicio: sector, page: 1 });
+    }
+  };
+
   const handleEstadoFilter = (estado) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ estado, page: 1 });
     }
   };
 
-  // Filtrar por localidad
   const handleLocalidadFilter = (localidad) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ localidad, page: 1 });
     }
   };
 
-  // Resetear filtros
+  const handleSeguroRTFilter = (tieneSeguro) => {
+    if (!loading && loadAttemptsRef.current < 3) {
+      loadProveedores({ tiene_seguro_RT: tieneSeguro, page: 1 });
+    }
+  };
+
   const resetFilters = () => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ 
         page: 1, 
         search: '', 
         rubro: '', 
+        sector_servicio: '',
         estado: '', 
-        localidad: '' 
+        localidad: '',
+        tiene_seguro_RT: ''
       });
     }
   };
 
-  // Exportar a CSV
+  const handlePageChange = (newPage) => {
+    if (!loading && loadAttemptsRef.current < 3) {
+      loadProveedores({ page: newPage });
+    }
+  };
+
+  // Exportar con campos extendidos
   const exportToCSV = () => {
     if (!proveedores.length) return;
     
@@ -284,6 +380,9 @@ export const useProveedores = () => {
       'Razón Social', 
       'CUIT',
       'Rubro',
+      'Sector de Servicio',
+      'Servicio Específico',
+      'Tipo de Proveedor',
       'Dirección',
       'Localidad',
       'Provincia',
@@ -293,8 +392,15 @@ export const useProveedores = () => {
       'Cargo Contacto',
       'Estado',
       'Seguro RT',
+      'Seguro Vida Personal',
       'Habilitación Personal',
-      'Habilitación Vehículo'
+      'Venc. Hab. Personal',
+      'Habilitación Vehículo',
+      'Venc. Hab. Vehículo',
+      'Personal Contratado',
+      'Documentos',
+      'Próximo Vencimiento',
+      'Frecuencia Renovación'
     ];
     
     const csvRows = [
@@ -304,6 +410,9 @@ export const useProveedores = () => {
         `"${prov.razon_social || ''}"`,
         `"${prov.cuit || ''}"`,
         `"${prov.rubro || ''}"`,
+        `"${prov.sector_servicio || ''}"`,
+        `"${prov.servicio || ''}"`,
+        `"${prov.tipo_proveedor || ''}"`,
         `"${prov.direccion || ''}"`,
         `"${prov.localidad || ''}"`,
         `"${prov.provincia || ''}"`,
@@ -313,8 +422,15 @@ export const useProveedores = () => {
         `"${prov.contacto_cargo || ''}"`,
         `"${prov.estado || ''}"`,
         prov.seguro_RT ? 'Sí' : 'No',
+        prov.seguro_vida ? 'Sí' : 'No',
         `"${prov.habilitacion_personal || ''}"`,
-        `"${prov.habilitacion_vehiculo || ''}"`
+        `"${prov.vencimiento_habilitacion_personal || ''}"`,
+        `"${prov.habilitacion_vehiculo || ''}"`,
+        `"${prov.vencimiento_habilitacion_vehiculo || ''}"`,
+        prov.personal_contratado || 0,
+        prov.documentos || 0,
+        `"${prov.vencimiento_documentacion || ''}"`,
+        `"${prov.frecuencia_renovacion || ''}"`
       ].join(','))
     ];
     
@@ -334,24 +450,21 @@ export const useProveedores = () => {
     HookLogger.info('CSV exportado exitosamente');
   };
 
-  // Cargar datos iniciales - CON PROTECCIÓN MÁXIMA
+  // Carga inicial
   useEffect(() => {
     mountedRef.current = true;
     loadAttemptsRef.current = 0;
 
-    // PROTECCIÓN GLOBAL + LOCAL - Evitar múltiples cargas
     if (globalLoadStarted || initialLoadDoneRef.current) {
       HookLogger.debug('Carga inicial bloqueada: ya se ejecutó globalmente');
       return;
     }
 
-    // MARCAR como cargado a nivel global y local
     globalLoadStarted = true;
     initialLoadDoneRef.current = true;
 
     HookLogger.info('INICIANDO CARGA INICIAL ÚNICA DE PROVEEDORES');
 
-    // Pequeño delay para asegurar que el componente está completamente montado
     const timer = setTimeout(() => {
       if (mountedRef.current) {
         loadProveedores();
@@ -362,7 +475,6 @@ export const useProveedores = () => {
       mountedRef.current = false;
       clearTimeout(timer);
       
-      // Resetear la protección global después de un tiempo
       setTimeout(() => {
         globalLoadStarted = false;
         HookLogger.debug('Protección global reseteada para proveedores');
@@ -384,8 +496,10 @@ export const useProveedores = () => {
     handlePageChange,
     handleSearch,
     handleRubroFilter,
+    handleSectorServicioFilter,
     handleEstadoFilter,
     handleLocalidadFilter,
+    handleSeguroRTFilter,
     resetFilters,
     exportToCSV
   };

@@ -1,5 +1,5 @@
 .configuration-page {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -12,6 +12,12 @@
   font-size: 28px;
   font-weight: 600;
   color: #1f2937;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: #6b7280;
+  margin-top: 5px;
 }
 
 .configuration-content {
@@ -70,12 +76,61 @@
   border-radius: 6px;
   font-size: 14px;
   transition: border-color 0.3s;
+  background: white;
 }
 
 .config-input:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.config-input:disabled {
+  background-color: #f9fafb;
+  cursor: not-allowed;
+}
+
+/* Para selects múltiples */
+.config-input[multiple] {
+  min-height: 120px;
+}
+
+/* Checkbox group */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 8px;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Textarea */
+.config-input[type="textarea"] {
+  min-height: 100px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Helper text */
+.helper-text {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  font-style: italic;
 }
 
 .config-actions {
@@ -115,4 +170,20 @@
 
 .btn-secondary:hover {
   background: #e5e7eb;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .configuration-content {
+    padding: 20px;
+  }
+  
+  .config-section {
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+  }
 }

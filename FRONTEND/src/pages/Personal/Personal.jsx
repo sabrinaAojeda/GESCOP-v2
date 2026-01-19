@@ -1,4 +1,4 @@
-// src/pages/Personal/Personal.jsx - VERSIÓN SIMPLIFICADA Y FUNCIONAL
+// src/pages/Personal/Personal.jsx - VERSIÓN MEJORADA CON DOCUMENTACIÓN
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePersonalCRUD } from '../../hooks/usePersonalCRUD';
@@ -34,25 +34,34 @@ const Personal = () => {
     isEditModalOpen,
     isViewModalOpen,
     isDeleteModalOpen,
+    isDocumentModalOpen,
     
     // Funciones de modales
     openCreateModal,
     openEditModal,
     openViewModal,
     openDeleteModal,
+    openDocumentModal,
+    
+    // Funciones de cierre
     closeCreateModal,
     closeEditModal,
     closeViewModal,
     closeDeleteModal,
+    closeDocumentModal,
     
-    // Estado de operaciones
-    operationInProgress
+    // Documentos
+    documents,
+    loadDocuments,
+    handleUploadDocument,
+    uploadingDocument
   } = usePersonalCRUD();
   
   // Estado local para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('');
+  const [selectedRol, setSelectedRol] = useState('');
   
   // Manejar cambios en filtros
   useEffect(() => {
@@ -77,6 +86,12 @@ const Personal = () => {
     handleFilterEstado(estado);
   };
   
+  const handleRolChange = (e) => {
+    const rol = e.target.value;
+    setSelectedRol(rol);
+    // Implementar filtro por rol si es necesario
+  };
+  
   // Manejar guardar personal
   const handleSavePersonal = async (personalData) => {
     if (isEditModalOpen && selectedPersonal) {
@@ -90,6 +105,13 @@ const Personal = () => {
   const handleConfirmDelete = async () => {
     if (selectedPersonal) {
       await handleDelete(selectedPersonal.id);
+    }
+  };
+  
+  // Manejar subida de documento
+  const handleDocumentUpload = async (file, tipo) => {
+    if (selectedPersonal) {
+      await handleUploadDocument(selectedPersonal.id, file, tipo);
     }
   };
   
@@ -140,12 +162,15 @@ const Personal = () => {
           <table className="data-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th>ID/Legajo</th>
                 <th>Nombre</th>
                 <th>Apellido</th>
                 <th>DNI</th>
+                <th>CUIL</th>
                 <th>Sector</th>
                 <th>Cargo</th>
+                <th>Rol Sistema</th>
+                <th>Venc. Licencia</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -153,12 +178,28 @@ const Personal = () => {
             <tbody>
               {personal.map((persona) => (
                 <tr key={persona.id}>
-                  <td>{persona.id}</td>
+                  <td>{persona.legajo || persona.id}</td>
                   <td>{persona.nombre}</td>
                   <td>{persona.apellido}</td>
                   <td>{persona.dni}</td>
+                  <td>{persona.cuil || 'N/A'}</td>
                   <td>{persona.sector}</td>
                   <td>{persona.cargo || persona.puesto}</td>
+                  <td>
+                    <span className={`rol-badge ${persona.rol === 'admin' ? 'rol-admin' : 'rol-usuario'}`}>
+                      {persona.rol === 'admin' ? 'Administrador' : 'Usuario'}
+                    </span>
+                  </td>
+                  <td>
+                    {persona.vencimiento_licencia ? (
+                      <span className={`vencimiento-badge ${
+                        new Date(persona.vencimiento_licencia) < new Date() ? 'vencido' :
+                        new Date(persona.vencimiento_licencia) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
+                      }`}>
+                        {new Date(persona.vencimiento_licencia).toLocaleDateString('es-AR')}
+                      </span>
+                    ) : 'N/A'}
+                  </td>
                   <td>
                     <span className={`status-badge ${persona.estado === 'Activo' ? 'status-active' : 'status-inactivo'}`}>
                       {persona.estado}
@@ -179,6 +220,13 @@ const Personal = () => {
                         title="Editar"
                       >
                         ✏️
+                      </button>
+                      <button 
+                        className="icon-btn" 
+                        onClick={() => openDocumentModal(persona)}
+                        title="Documentos"
+                      >
+                        📄
                       </button>
                       <button 
                         className="icon-btn" 
@@ -244,8 +292,14 @@ const Personal = () => {
           <div className="label">Empleados Activos</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">{stats.inactive}</div>
-          <div className="label">Empleados Inactivos</div>
+          <div className="number">{personal.filter(p => p.rol === 'admin').length}</div>
+          <div className="label">Administradores</div>
+        </div>
+        <div className="summary-card-small">
+          <div className="number">{personal.filter(p => 
+            p.vencimiento_licencia && new Date(p.vencimiento_licencia) < new Date(Date.now() + 30*24*60*60*1000)
+          ).length}</div>
+          <div className="label">Licencias por Vencer</div>
         </div>
       </div>
       
@@ -254,7 +308,7 @@ const Personal = () => {
         <div className="section-header">
           <h2 className="section-title">
             <span className="section-icon">👥</span>
-            Gestión de Personal
+            Gestión de Personal - Empleados COPESA
           </h2>
           <div className="table-toolbar">
             <button 
@@ -267,7 +321,7 @@ const Personal = () => {
             <button 
               className="btn btn-primary"
               onClick={openCreateModal}
-              disabled={loading || operationInProgress}
+              disabled={loading}
             >
               <span className="btn-icon">+</span> Nuevo Personal
             </button>
@@ -279,7 +333,7 @@ const Personal = () => {
           <input
             type="text"
             className="filter-input"
-            placeholder="Buscar por nombre, apellido o DNI..."
+            placeholder="Buscar por nombre, apellido, DNI o legajo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             disabled={loading}
@@ -295,6 +349,18 @@ const Personal = () => {
             <option value="Logística">Logística</option>
             <option value="Operaciones">Operaciones</option>
             <option value="Mantenimiento">Mantenimiento</option>
+            <option value="Incineración">Incineración</option>
+            <option value="Tratamiento">Tratamiento</option>
+          </select>
+          <select
+            className="filter-select"
+            value={selectedRol}
+            onChange={handleRolChange}
+            disabled={loading}
+          >
+            <option value="">Todos los roles</option>
+            <option value="admin">Administrador</option>
+            <option value="usuario">Usuario</option>
           </select>
           <select
             className="filter-select"
@@ -305,11 +371,12 @@ const Personal = () => {
             <option value="">Todos los estados</option>
             <option value="Activo">Activo</option>
             <option value="Inactivo">Inactivo</option>
+            <option value="Licencia">Licencia</option>
           </select>
           <button
             className="btn btn-secondary"
             onClick={clearFilters}
-            disabled={loading || (!searchTerm && !selectedSector && !selectedEstado)}
+            disabled={loading || (!searchTerm && !selectedSector && !selectedRol && !selectedEstado)}
           >
             Limpiar
           </button>
@@ -332,7 +399,7 @@ const Personal = () => {
             mode="crear"
             onSave={handleSavePersonal}
             onCancel={closeCreateModal}
-            loading={operationInProgress}
+            loading={loading}
           />
         </GenericModal>
       )}
@@ -349,7 +416,7 @@ const Personal = () => {
             personal={selectedPersonal}
             onSave={handleSavePersonal}
             onCancel={closeEditModal}
-            loading={operationInProgress}
+            loading={loading}
           />
         </GenericModal>
       )}
@@ -370,6 +437,60 @@ const Personal = () => {
         </GenericModal>
       )}
       
+      {/* Modal de Documentos */}
+      {isDocumentModalOpen && selectedPersonal && (
+        <GenericModal
+          title={`📄 Documentos de ${selectedPersonal.nombre} ${selectedPersonal.apellido}`}
+          onClose={closeDocumentModal}
+          size="large"
+        >
+          <div className="documentos-container">
+            <h3>Documentación Escaneada</h3>
+            <div className="documentos-list">
+              {documents.length > 0 ? (
+                documents.map((doc, index) => (
+                  <div key={index} className="documento-item">
+                    <div className="documento-info">
+                      <strong>{doc.tipo}</strong>
+                      <small>{doc.fecha_subida}</small>
+                      {doc.vencimiento && (
+                        <span className={`vencimiento ${
+                          new Date(doc.vencimiento) < new Date() ? 'vencido' :
+                          new Date(doc.vencimiento) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
+                        }`}>
+                          Vence: {new Date(doc.vencimiento).toLocaleDateString('es-AR')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="documento-actions">
+                      <button className="icon-btn" title="Descargar">📤</button>
+                      <button className="icon-btn" title="Eliminar">🗑️</button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p>No hay documentos cargados</p>
+              )}
+            </div>
+            
+            <div className="subir-documento">
+              <h4>Subir nuevo documento</h4>
+              <select className="filter-select">
+                <option value="">Tipo de documento</option>
+                <option value="licencia_conducir">Licencia de Conducir</option>
+                <option value="certificado_capacitacion">Certificado de Capacitación</option>
+                <option value="carnet_cargas_peligrosas">Carnet Cargas Peligrosas</option>
+                <option value="contrato">Contrato Laboral</option>
+                <option value="seguro_vida">Seguro de Vida</option>
+              </select>
+              <input type="date" className="filter-select" placeholder="Fecha vencimiento" />
+              <input type="file" className="filter-select" accept=".pdf,.jpg,.jpeg,.png" />
+              <button className="btn btn-primary">Subir Documento</button>
+            </div>
+          </div>
+        </GenericModal>
+      )}
+      
       {/* Modal de Eliminación */}
       {isDeleteModalOpen && selectedPersonal && (
         <GenericModal
@@ -379,21 +500,22 @@ const Personal = () => {
         >
           <div style={{ padding: '20px', textAlign: 'center' }}>
             <p>¿Está seguro de eliminar a <strong>{selectedPersonal.nombre} {selectedPersonal.apellido}</strong>?</p>
+            <p><small>Esta acción no se puede deshacer.</small></p>
             <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
               <button 
                 className="btn btn-secondary"
                 onClick={closeDeleteModal}
-                disabled={operationInProgress}
+                disabled={loading}
               >
                 Cancelar
               </button>
               <button 
                 className="btn btn-primary"
                 onClick={handleConfirmDelete}
-                disabled={operationInProgress}
+                disabled={loading}
                 style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
               >
-                {operationInProgress ? 'Eliminando...' : 'Eliminar'}
+                {loading ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
           </div>

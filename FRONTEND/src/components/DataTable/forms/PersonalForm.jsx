@@ -1,4 +1,4 @@
-// src/components/DataTable/Forms/PersonalForm.jsx - CON VALIDACIONES COMPLETAS
+// src/components/DataTable/Forms/PersonalForm.jsx - CON CAMPOS COMPLETOS
 import React, { useState, useEffect } from 'react';
 import './PersonalForm.css';
 
@@ -15,15 +15,31 @@ const PersonalForm = ({
     nombre: '',
     apellido: '',
     dni: '',
+    cuil: '',
+    legajo: '',
     telefono: '',
     email: '',
+    email_corporativo: '',
     sector: '',
     cargo: '',
     fecha_ingreso: new Date().toISOString().split('T')[0],
     estado: 'Activo',
+    rol: 'usuario',
     direccion: '',
     fecha_nacimiento: '',
     tipo_contrato: 'Planta Permanente',
+    
+    // Documentación
+    licencia_conducir: '',
+    vencimiento_licencia: '',
+    categoria_licencia: '',
+    certificados_capacitacion: '',
+    carnet_cargas_peligrosas: '',
+    vencimiento_carnet: '',
+    
+    // Información adicional
+    base_operativa: '',
+    habilitacion_tipo: '',
     observaciones: ''
   });
   
@@ -37,13 +53,12 @@ const PersonalForm = ({
     'Logística',
     'Operaciones',
     'Mantenimiento',
-    'Recursos Humanos',
-    'Finanzas',
-    'Compras',
-    'Ventas',
-    'Calidad',
+    'Incineración',
+    'Tratamiento',
+    'Almacenamiento',
     'Seguridad',
-    'Otro'
+    'Recursos Humanos',
+    'Finanzas'
   ];
   
   const tiposContrato = [
@@ -54,6 +69,33 @@ const PersonalForm = ({
     'Práctica Profesional'
   ];
   
+  const basesOperativas = [
+    'COPESA Central',
+    'Planta Caucho',
+    'Caleta Olivia',
+    'Base Logística',
+    'Incineración',
+    'Tratamiento Térmico'
+  ];
+  
+  const tiposHabilitacion = [
+    'Generador',
+    'Operador',
+    'Transportista',
+    'Gestor',
+    'Tratador',
+    'Sin habilitación'
+  ];
+  
+  const categoriasLicencia = [
+    'A - Motos',
+    'B - Autos',
+    'C - Camiones',
+    'D - Colectivos',
+    'E - Acoplados',
+    'F - Maquinaria'
+  ];
+  
   // Inicializar formulario con datos existentes si estamos editando/viendo
   useEffect(() => {
     if (personal) {
@@ -61,15 +103,27 @@ const PersonalForm = ({
         nombre: personal.nombre || '',
         apellido: personal.apellido || '',
         dni: personal.dni || personal.documento || '',
+        cuil: personal.cuil || '',
+        legajo: personal.legajo || '',
         telefono: personal.telefono || '',
         email: personal.email || '',
+        email_corporativo: personal.email_corporativo || personal.email || '',
         sector: personal.sector || '',
         cargo: personal.cargo || personal.puesto || '',
         fecha_ingreso: personal.fecha_ingreso || new Date().toISOString().split('T')[0],
         estado: personal.estado || 'Activo',
+        rol: personal.rol || 'usuario',
         direccion: personal.direccion || '',
         fecha_nacimiento: personal.fecha_nacimiento || '',
         tipo_contrato: personal.tipo_contrato || 'Planta Permanente',
+        licencia_conducir: personal.licencia_conducir || '',
+        vencimiento_licencia: personal.vencimiento_licencia || '',
+        categoria_licencia: personal.categoria_licencia || '',
+        certificados_capacitacion: personal.certificados_capacitacion || '',
+        carnet_cargas_peligrosas: personal.carnet_cargas_peligrosas || '',
+        vencimiento_carnet: personal.vencimiento_carnet || '',
+        base_operativa: personal.base_operativa || '',
+        habilitacion_tipo: personal.habilitacion_tipo || '',
         observaciones: personal.observaciones || ''
       });
     }
@@ -101,37 +155,30 @@ const PersonalForm = ({
         }
         break;
         
-      case 'email':
+      case 'cuil':
+        if (value && !/^\d{2}-\d{8}-\d{1}$/.test(value)) {
+          newErrors[name] = 'Formato CUIL inválido (XX-XXXXXXXX-X)';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+        
+      case 'email_corporativo':
         if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors[name] = 'Email inválido';
+          newErrors[name] = 'Email corporativo inválido';
+        } else if (!value.includes('@copesa-ar.com') && !value.includes('@copesa.com')) {
+          newErrors[name] = 'Debe ser un email corporativo COPESA';
         } else {
           delete newErrors[name];
         }
         break;
         
-      case 'telefono':
-        if (value && !/^\d{6,15}$/.test(value.replace(/\D/g, ''))) {
-          newErrors[name] = 'Teléfono inválido';
-        } else {
-          delete newErrors[name];
-        }
-        break;
-        
-      case 'fecha_nacimiento':
+      case 'vencimiento_licencia':
+      case 'vencimiento_carnet':
         if (value) {
-          const birthDate = new Date(value);
-          const today = new Date();
-          let age = today.getFullYear() - birthDate.getFullYear();
-          const monthDiff = today.getMonth() - birthDate.getMonth();
-          
-          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
-          }
-          
-          if (age < 18) {
-            newErrors[name] = 'Debe ser mayor de 18 años';
-          } else if (age > 100) {
-            newErrors[name] = 'Fecha de nacimiento inválida';
+          const fechaVencimiento = new Date(value);
+          if (fechaVencimiento < new Date()) {
+            newErrors[name] = 'Fecha de vencimiento pasada';
           } else {
             delete newErrors[name];
           }
@@ -163,8 +210,12 @@ const PersonalForm = ({
       newErrors.dni = 'DNI inválido (7-8 dígitos)';
     }
     
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email inválido';
+    if (formData.email_corporativo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_corporativo)) {
+      newErrors.email_corporativo = 'Email corporativo inválido';
+    } else if (formData.email_corporativo && 
+              !formData.email_corporativo.includes('@copesa-ar.com') && 
+              !formData.email_corporativo.includes('@copesa.com')) {
+      newErrors.email_corporativo = 'Debe ser un email corporativo COPESA';
     }
     
     setErrors(newErrors);
@@ -213,8 +264,10 @@ const PersonalForm = ({
     const dataToSend = {
       ...formData,
       dni: formData.dni.replace(/\D/g, ''),
+      cuil: formData.cuil.replace(/\D/g, ''),
       telefono: formData.telefono.replace(/\D/g, ''),
-      puesto: formData.cargo // Para compatibilidad con backend
+      puesto: formData.cargo, // Para compatibilidad
+      rol_sistema: formData.rol
     };
     
     onSave(dataToSend);
@@ -232,7 +285,7 @@ const PersonalForm = ({
     <form onSubmit={handleSubmit} className="personal-form" id="personal-form">
       {/* Sección 1: Información Personal */}
       <div className="form-section">
-        <h3 className="form-section-title">📋 Información Personal</h3>
+        <h3 className="form-section-title">👤 Información Personal</h3>
         
         <div className="form-row">
           <div className="form-group">
@@ -281,6 +334,36 @@ const PersonalForm = ({
               required
             />
             {renderFieldError('dni')}
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">CUIL</label>
+            <input
+              type="text"
+              className={`form-input ${touched.cuil && errors.cuil ? 'error' : ''}`}
+              name="cuil"
+              value={formData.cuil}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              disabled={readOnly || loading}
+              placeholder="20-12345678-9"
+            />
+            {renderFieldError('cuil')}
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Legajo</label>
+            <input
+              type="text"
+              className="form-input"
+              name="legajo"
+              value={formData.legajo}
+              onChange={handleChange}
+              disabled={readOnly || loading}
+              placeholder="COP-001"
+            />
           </div>
           
           <div className="form-group">
@@ -356,6 +439,40 @@ const PersonalForm = ({
         
         <div className="form-row">
           <div className="form-group">
+            <label className="form-label">Base Operativa</label>
+            <select
+              className="form-input"
+              name="base_operativa"
+              value={formData.base_operativa}
+              onChange={handleChange}
+              disabled={readOnly || loading}
+            >
+              <option value="">Seleccionar base...</option>
+              {basesOperativas.map(base => (
+                <option key={base} value={base}>{base}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Tipo de Habilitación</label>
+            <select
+              className="form-input"
+              name="habilitacion_tipo"
+              value={formData.habilitacion_tipo}
+              onChange={handleChange}
+              disabled={readOnly || loading}
+            >
+              <option value="">Seleccionar tipo...</option>
+              {tiposHabilitacion.map(tipo => (
+                <option key={tipo} value={tipo}>{tipo}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
             <label className="form-label">Tipo de Contrato</label>
             <select
               className="form-input"
@@ -402,6 +519,20 @@ const PersonalForm = ({
               <option value="Baja">Baja</option>
             </select>
           </div>
+          
+          <div className="form-group">
+            <label className="form-label">Rol en el Sistema</label>
+            <select
+              className="form-input"
+              name="rol"
+              value={formData.rol}
+              onChange={handleChange}
+              disabled={readOnly || loading}
+            >
+              <option value="usuario">Usuario</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
         </div>
       </div>
       
@@ -426,7 +557,7 @@ const PersonalForm = ({
           </div>
           
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Email Personal</label>
             <input
               type="email"
               className={`form-input ${touched.email && errors.email ? 'error' : ''}`}
@@ -435,14 +566,125 @@ const PersonalForm = ({
               onChange={handleChange}
               onBlur={handleBlur}
               disabled={readOnly || loading}
-              placeholder="ejemplo@empresa.com"
+              placeholder="personal@gmail.com"
             />
             {renderFieldError('email')}
           </div>
         </div>
+        
+        <div className="form-group">
+          <label className="form-label required">Email Corporativo</label>
+          <input
+            type="email"
+            className={`form-input ${touched.email_corporativo && errors.email_corporativo ? 'error' : ''}`}
+            name="email_corporativo"
+            value={formData.email_corporativo}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            disabled={readOnly || loading}
+            placeholder="nombre.apellido@copesa-ar.com"
+            required
+          />
+          {renderFieldError('email_corporativo')}
+          <small className="helper-text">Debe ser un email corporativo de COPESA</small>
+        </div>
       </div>
       
-      {/* Sección 4: Observaciones */}
+      {/* Sección 4: Documentación */}
+      <div className="form-section">
+        <h3 className="form-section-title">📄 Documentación y Certificados</h3>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Licencia de Conducir</label>
+            <input
+              type="text"
+              className="form-input"
+              name="licencia_conducir"
+              value={formData.licencia_conducir}
+              onChange={handleChange}
+              disabled={readOnly || loading}
+              placeholder="Número de licencia"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Categoría</label>
+            <select
+              className="form-input"
+              name="categoria_licencia"
+              value={formData.categoria_licencia}
+              onChange={handleChange}
+              disabled={readOnly || loading}
+            >
+              <option value="">Seleccionar categoría</option>
+              {categoriasLicencia.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Vencimiento Licencia</label>
+            <input
+              type="date"
+              className={`form-input ${touched.vencimiento_licencia && errors.vencimiento_licencia ? 'error' : ''}`}
+              name="vencimiento_licencia"
+              value={formData.vencimiento_licencia}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              disabled={readOnly || loading}
+            />
+            {renderFieldError('vencimiento_licencia')}
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Carnet Cargas Peligrosas</label>
+            <input
+              type="text"
+              className="form-input"
+              name="carnet_cargas_peligrosas"
+              value={formData.carnet_cargas_peligrosas}
+              onChange={handleChange}
+              disabled={readOnly || loading}
+              placeholder="Número de carnet"
+            />
+          </div>
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Vencimiento Carnet</label>
+            <input
+              type="date"
+              className={`form-input ${touched.vencimiento_carnet && errors.vencimiento_carnet ? 'error' : ''}`}
+              name="vencimiento_carnet"
+              value={formData.vencimiento_carnet}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              disabled={readOnly || loading}
+            />
+            {renderFieldError('vencimiento_carnet')}
+          </div>
+        </div>
+        
+        <div className="form-group">
+          <label className="form-label">Certificados de Capacitación</label>
+          <textarea
+            className="form-input"
+            name="certificados_capacitacion"
+            value={formData.certificados_capacitacion}
+            onChange={handleChange}
+            disabled={readOnly || loading}
+            placeholder="Lista de certificados obtenidos (separados por coma)"
+            rows="2"
+          />
+        </div>
+      </div>
+      
+      {/* Sección 5: Observaciones */}
       <div className="form-section">
         <h3 className="form-section-title">📝 Observaciones</h3>
         
@@ -453,7 +695,7 @@ const PersonalForm = ({
             value={formData.observaciones}
             onChange={handleChange}
             disabled={readOnly || loading}
-            placeholder="Notas adicionales, habilidades especiales, etc."
+            placeholder="Notas adicionales, habilidades especiales, capacitaciones pendientes, etc."
             rows="3"
             style={{ resize: 'vertical' }}
           />
