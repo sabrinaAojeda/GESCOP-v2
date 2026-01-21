@@ -165,14 +165,14 @@ const Sidebar = ({ onClose }) => {
         </div>
 
         <div className="nav-section">
-          <div className="nav-title">HERRAMIENTAS</div>
+          <div className="nav-title">ADMINITSTRACION DEL SISTEMA</div>
           
           <div 
             className={`nav-item has-submenu ${isHerramientasActive() ? 'active' : ''} ${herramientasExpanded ? 'expanded' : ''}`}
             onClick={() => setHerramientasExpanded(!herramientasExpanded)}
           >
             <span className="nav-icon">🔧</span>
-            <span className="nav-label">Herramientas</span>
+            <span className="nav-label">Ajustes</span>
             <span className="submenu-arrow">{herramientasExpanded ? '▸' : '▸'}</span>
           </div>
           
