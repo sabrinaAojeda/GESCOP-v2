@@ -1,4 +1,4 @@
-// src/components/Header/Header.jsx - VERSIÓN SIN LOGO DUPLICADO
+// src/components/Header/Header.jsx - VERSIÓN MEJORADA Y COMPACTA
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import useResponsive from '../../hooks/useResponsive';
@@ -37,8 +37,8 @@ const Header = ({ onMenuClick, sidebarOpen, shouldShowHamburger }) => {
           </button>
         )}
 
-        {/* Título de página dinámico - NO LOGO */}
-        <div className="header-title">
+        {/* Información del usuario */}
+        <div className="header-user-info">
           <span className="header-greeting">Bienvenido/a</span>
           <span className="header-username">
             {user?.name || 'Usuario'}

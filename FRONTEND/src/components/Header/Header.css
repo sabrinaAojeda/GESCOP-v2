@@ -1,57 +1,62 @@
-/* src/components/Header/Header.css - VERSIÓN MEJORADA */
+/* src/components/Header/Header.css - VERSIÓN MEJORADA Y COMPACTA */
 .top-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 25px;
+  padding: 12px 20px;
   background: white;
   border-bottom: 2px solid #07668C;
-  box-shadow: 0 2px 15px rgba(6, 100, 150, 0.15);
+  box-shadow: 0 2px 12px rgba(6, 100, 150, 0.12);
   position: sticky;
   top: 0;
   z-index: 1000;
   gap: 15px;
   flex-wrap: wrap;
+  min-height: 65px;
 }
 
+/* Parte izquierda */
 .header-left {
   display: flex;
   align-items: center;
-  gap: 15px;
-  min-width: 200px;
+  gap: 12px;
+  min-width: 180px;
+  flex: 1;
 }
 
-/* Menú hamburguesa - SOLO visible cuando shouldShowHamburger es true */
+/* Menú hamburguesa - visible solo en móviles */
 .menu-toggle {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 22px;
   color: #066496;
   cursor: pointer;
-  padding: 8px;
+  padding: 6px;
   border-radius: 6px;
   transition: all 0.3s;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: rgba(6, 100, 150, 0.08);
 }
 
 .menu-toggle:hover {
-  background: rgba(6, 100, 150, 0.1);
+  background: rgba(6, 100, 150, 0.15);
 }
 
-/* Título dinámico - SIN LOGO */
-.header-title {
+/* Información del usuario */
+.header-user-info {
   display: flex;
   flex-direction: column;
-  min-width: 150px;
+  flex: 1;
+  min-width: 120px;
 }
 
 .header-greeting {
-  font-size: 12px;
+  font-size: 11px;
   color: #56A69E;
   font-weight: 600;
   line-height: 1;
@@ -60,7 +65,7 @@
 }
 
 .header-username {
-  font-size: 16px;
+  font-size: 15px;
   color: #0D0D0D;
   font-weight: 700;
   line-height: 1.2;
@@ -71,28 +76,28 @@
 .search-bar {
   display: flex;
   align-items: center;
-  background: #f0f7fa;
-  border-radius: 10px;
-  padding: 12px 18px;
-  flex: 1;
-  max-width: 450px;
-  border: 2px solid transparent;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 15px;
+  flex: 2;
+  max-width: 400px;
+  border: 1px solid #e2e8f0;
   transition: all 0.3s;
   min-width: 200px;
-  order: 2;
 }
 
 .search-bar:focus-within {
   border-color: #56A69E;
   background: white;
-  box-shadow: 0 4px 12px rgba(86, 166, 158, 0.2);
+  box-shadow: 0 0 0 3px rgba(86, 166, 158, 0.15);
 }
 
 .search-icon {
-  font-size: 16px;
+  font-size: 15px;
   color: #066496;
   min-width: 20px;
   flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .search-input {
@@ -100,14 +105,14 @@
   background: none;
   outline: none;
   width: 100%;
-  margin-left: 12px;
-  font-size: 15px;
+  margin-left: 10px;
+  font-size: 14px;
   color: #0D0D0D;
   font-weight: 500;
 }
 
 .search-input::placeholder {
-  color: #56A69E;
+  color: #94a3b8;
   font-weight: 400;
 }
 
@@ -115,29 +120,30 @@
 .user-actions {
   display: flex;
   align-items: center;
-  gap: 20px;
-  order: 3;
+  gap: 15px;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 /* Notificaciones */
 .notification-icon {
   position: relative;
   cursor: pointer;
-  padding: 10px;
-  border-radius: 10px;
+  padding: 8px;
+  border-radius: 8px;
   transition: all 0.3s;
-  background: rgba(217, 170, 30, 0.1);
-  border: 1px solid rgba(217, 170, 30, 0.3);
+  background: rgba(217, 170, 30, 0.08);
+  border: 1px solid rgba(217, 170, 30, 0.2);
   flex-shrink: 0;
 }
 
 .notification-icon:hover {
-  background: rgba(217, 170, 30, 0.2);
-  transform: translateY(-2px);
+  background: rgba(217, 170, 30, 0.15);
+  transform: translateY(-1px);
 }
 
 .bell-icon {
-  font-size: 18px;
+  font-size: 16px;
   color: #D9AA1E;
   display: block;
 }
@@ -146,28 +152,28 @@
   background: #D9AA1E;
   color: white;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -4px;
+  right: -4px;
   border: 2px solid white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* Perfil de usuario - Desktop */
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 15px;
+  gap: 10px;
+  padding: 6px 12px;
   background: rgba(6, 100, 150, 0.05);
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid rgba(6, 100, 150, 0.1);
   transition: all 0.3s;
   flex-shrink: 0;
@@ -175,12 +181,11 @@
 
 .user-profile:hover {
   background: rgba(6, 100, 150, 0.1);
-  transform: translateY(-2px);
 }
 
 .profile-avatar {
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   background: linear-gradient(135deg, #066496 0%, #07668C 100%);
   border-radius: 50%;
   display: flex;
@@ -190,7 +195,7 @@
 }
 
 .avatar-icon {
-  font-size: 20px;
+  font-size: 18px;
   color: white;
   font-weight: 600;
 }
@@ -198,11 +203,11 @@
 .profile-info {
   display: flex;
   flex-direction: column;
-  min-width: 120px;
+  min-width: 100px;
 }
 
 .profile-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #0D0D0D;
   line-height: 1.2;
@@ -212,7 +217,7 @@
 }
 
 .profile-role {
-  font-size: 12px;
+  font-size: 11px;
   color: #56A69E;
   font-weight: 500;
   line-height: 1;
@@ -223,24 +228,24 @@
 .btn-logout {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: 6px;
+  padding: 8px 16px;
   background: linear-gradient(135deg, #066496 0%, #07668C 100%);
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 4px 10px rgba(6, 100, 150, 0.25);
+  box-shadow: 0 3px 8px rgba(6, 100, 150, 0.2);
   flex-shrink: 0;
 }
 
 .btn-logout:hover {
   background: linear-gradient(135deg, #05517a 0%, #065575 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(6, 100, 150, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(6, 100, 150, 0.25);
 }
 
 /* Menú de usuario Mobile */
@@ -253,7 +258,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 5px;
+  padding: 4px;
 }
 
 .mobile-user-dropdown {
@@ -261,20 +266,20 @@
   top: 100%;
   right: 0;
   background: white;
-  border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
-  min-width: 200px;
-  padding: 15px;
-  margin-top: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+  min-width: 180px;
+  padding: 12px;
+  margin-top: 8px;
   z-index: 1001;
-  border: 1px solid #e9ecef;
+  border: 1px solid #e2e8f0;
   animation: slideDown 0.2s ease;
 }
 
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -283,23 +288,31 @@
 }
 
 .mobile-user-info {
-  padding-bottom: 15px;
-  margin-bottom: 15px;
-  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.mobile-user-info .profile-name {
+  font-size: 14px;
+}
+
+.mobile-user-info .profile-role {
+  font-size: 12px;
 }
 
 .mobile-logout-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   background: linear-gradient(135deg, #066496 0%, #07668C 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   transition: all 0.3s;
 }
@@ -308,51 +321,61 @@
   background: linear-gradient(135deg, #05517a 0%, #065575 100%);
 }
 
-/* Responsive Styles MEJORADOS */
+/* Responsive Styles */
 @media (max-width: 1024px) {
-  .search-bar {
-    max-width: 350px;
+  .top-header {
+    padding: 10px 15px;
   }
   
-  .user-actions {
-    gap: 15px;
+  .search-bar {
+    max-width: 350px;
   }
 }
 
 @media (max-width: 768px) {
   .top-header {
-    padding: 12px 15px;
+    padding: 8px 12px;
     gap: 10px;
+    min-height: 60px;
   }
   
-  /* Hamburguesa solo visible en móviles REALES */
   .menu-toggle {
-    display: flex;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
   }
   
-  .header-title {
-    flex: 1;
+  .header-left {
     min-width: auto;
   }
   
+  .header-user-info {
+    min-width: auto;
+  }
+  
+  .header-greeting {
+    font-size: 10px;
+  }
+  
   .header-username {
-    font-size: 14px;
+    font-size: 13px;
   }
   
   .search-bar {
     order: 3;
-    margin-top: 10px;
+    margin-top: 8px;
     width: 100%;
     max-width: 100%;
     min-width: auto;
+    padding: 6px 12px;
   }
   
   .user-actions {
-    gap: 10px;
+    gap: 8px;
   }
   
   .notification-icon {
-    padding: 8px;
+    padding: 6px;
   }
   
   .user-profile {
@@ -366,40 +389,40 @@
   .mobile-user-menu {
     display: block;
   }
+  
+  .mobile-user-toggle .profile-avatar {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 @media (max-width: 480px) {
   .top-header {
-    padding: 10px;
+    padding: 6px 10px;
   }
   
   .header-greeting {
-    font-size: 10px;
+    font-size: 9px;
   }
   
   .header-username {
-    font-size: 13px;
+    font-size: 12px;
   }
   
   .search-bar {
-    padding: 8px 12px;
+    padding: 5px 10px;
   }
   
   .search-input {
-    font-size: 14px;
+    font-size: 13px;
   }
   
   .notification-icon {
-    padding: 6px;
+    padding: 5px;
   }
   
   .bell-icon {
-    font-size: 16px;
-  }
-  
-  .profile-avatar {
-    width: 35px;
-    height: 35px;
+    font-size: 14px;
   }
 }
 
@@ -407,9 +430,5 @@
 @media (min-width: 992px) {
   .menu-toggle {
     display: none !important;
-  }
-  
-  .header-left {
-    min-width: 300px;
   }
 }

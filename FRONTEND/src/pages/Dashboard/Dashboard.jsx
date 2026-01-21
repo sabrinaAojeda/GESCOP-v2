@@ -1,17 +1,55 @@
-import React from 'react';
+// src/pages/Dashboard/Dashboard.jsx - VERSIÓN MEJORADA
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [filterType, setFilterType] = useState('Todos los tipos');
+  const [filterEstado, setFilterEstado] = useState('Todos los estados');
+  const [filterDate, setFilterDate] = useState('');
 
   const handleCardClick = (path) => {
     navigate(path);
   };
 
+  // Datos de ejemplo para vencimientos
+  const vencimientos = [
+    {
+      id: 1,
+      item: 'AB-123-CD',
+      detalle: 'Toyota Hilux 2023',
+      tipo: 'Seguro',
+      vencimiento: '15/03/2024',
+      estado: 'Por vencer',
+      documentos: 2,
+      diasRestantes: 3
+    },
+    {
+      id: 2,
+      item: 'EMP-001',
+      detalle: 'Juan Pérez',
+      tipo: 'Certificado',
+      vencimiento: '20/03/2024',
+      estado: 'Por vencer',
+      documentos: 1,
+      diasRestantes: 8
+    },
+    {
+      id: 3,
+      item: 'SEDE-CENTRAL',
+      detalle: 'Permiso Ambiental',
+      tipo: 'Permiso',
+      vencimiento: '05/03/2024',
+      estado: 'Vencido',
+      documentos: 3,
+      diasRestantes: -2
+    }
+  ];
+
   return (
     <div className="dashboard-page">
-      {/* Alertas de Vencimiento */}
+      {/* Panel de Alertas de Vencimiento */}
       <div className="alert-panel">
         <div className="alert-header">
           <span>⚠️</span>
@@ -19,15 +57,25 @@ const Dashboard = () => {
         </div>
         <div className="alert-item">
           <span>Seguro del vehículo AB-123-CD vence en 3 días</span>
-          <button className="btn-ver">Ver</button>
+          <button 
+            className="btn-ver"
+            onClick={() => navigate('/flota/listado-vehiculos')}
+          >
+            Ver
+          </button>
         </div>
         <div className="alert-item">
           <span>Certificado de Juan Pérez vence en 7 días</span>
-          <button className="btn-ver">Ver</button>
+          <button 
+            className="btn-ver"
+            onClick={() => navigate('/personal')}
+          >
+            Ver
+          </button>
         </div>
       </div>
 
-      {/* Resumen General */}
+      {/* Resumen General - Tarjetas más compactas */}
       <div className="dashboard-grid">
         <div 
           className="summary-card flota" 
@@ -90,10 +138,13 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Vencimientos Próximos */}
+      {/* Sección de Vencimientos Próximos */}
       <div className="data-section">
         <div className="section-header">
-          <h2 className="section-title">📋 Vencimientos Próximos</h2>
+          <h2 className="section-title">
+            <span>📋</span>
+            Vencimientos Próximos
+          </h2>
           <div className="table-toolbar">
             <button className="btn btn-secondary">
               <span>⏷</span> Filtrar
@@ -107,22 +158,39 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Barra de filtros */}
         <div className="filter-bar">
-          <select className="filter-select">
+          <select 
+            className="filter-select"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
             <option>Todos los tipos</option>
             <option>Seguro</option>
             <option>VTV</option>
             <option>Certificado</option>
+            <option>Permiso</option>
           </select>
-          <select className="filter-select">
+          <select 
+            className="filter-select"
+            value={filterEstado}
+            onChange={(e) => setFilterEstado(e.target.value)}
+          >
             <option>Todos los estados</option>
             <option>Vigente</option>
             <option>Por vencer</option>
             <option>Vencido</option>
           </select>
-          <input type="date" className="filter-select" />
+          <input 
+            type="date" 
+            className="filter-select"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            placeholder="dd/mm/aaaa"
+          />
         </div>
 
+        {/* Tabla de vencimientos */}
         <table className="data-table">
           <thead>
             <tr>
@@ -135,23 +203,52 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>
-                <strong>AB-123-CD</strong><br />
-                <small>Toyota Hilux 2023</small>
-              </td>
-              <td>Seguro</td>
-              <td>15/03/2024</td>
-              <td><span className="status-badge status-warning">Por vencer</span></td>
-              <td>📄📄</td>
-              <td>
-                <div className="action-buttons">
-                  <button className="icon-btn" title="Ver">👁️</button>
-                  <button className="icon-btn" title="Editar">✏️</button>
-                  <button className="icon-btn" title="Descargar">📤</button>
-                </div>
-              </td>
-            </tr>
+            {vencimientos.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <strong style={{ color: '#1f2937' }}>{item.item}</strong>
+                  <small>{item.detalle}</small>
+                </td>
+                <td style={{ color: '#374151', fontWeight: '500' }}>{item.tipo}</td>
+                <td style={{ color: '#374151', fontWeight: '500' }}>{item.vencimiento}</td>
+                <td>
+                  <span className={`status-badge ${
+                    item.estado === 'Vencido' ? 'status-expired' : 
+                    item.estado === 'Por vencer' ? 'status-warning' : 'status-active'
+                  }`}>
+                    {item.estado}
+                  </span>
+                </td>
+                <td style={{ color: '#374151', fontWeight: '500' }}>
+                  {'📄'.repeat(item.documentos)}
+                </td>
+                <td>
+                  <div className="action-buttons">
+                    <button 
+                      className="icon-btn" 
+                      title="Ver detalles"
+                      onClick={() => console.log('Ver:', item.id)}
+                    >
+                      👁️
+                    </button>
+                    <button 
+                      className="icon-btn" 
+                      title="Editar"
+                      onClick={() => console.log('Editar:', item.id)}
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      className="icon-btn" 
+                      title="Descargar documentos"
+                      onClick={() => console.log('Descargar:', item.id)}
+                    >
+                      📤
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
