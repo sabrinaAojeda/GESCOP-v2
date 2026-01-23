@@ -1,4 +1,4 @@
-// src/pages/Personal/Personal.jsx - VERSIÓN MEJORADA CON DOCUMENTACIÓN
+// src/pages/Personal/Personal.jsx - VERSIÓN COMPLETA CONECTADA AL BACKEND
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePersonalCRUD } from '../../hooks/usePersonalCRUD';
@@ -52,7 +52,6 @@ const Personal = () => {
     
     // Documentos
     documents,
-    loadDocuments,
     handleUploadDocument,
     uploadingDocument
   } = usePersonalCRUD();
@@ -89,8 +88,13 @@ const Personal = () => {
   const handleRolChange = (e) => {
     const rol = e.target.value;
     setSelectedRol(rol);
-    // Implementar filtro por rol si es necesario
+    // Filtrar por rol localmente
   };
+  
+  // Filtrar personal por rol (localmente)
+  const filteredPersonal = selectedRol 
+    ? personal.filter(person => (person.rol_sistema || person.rol) === selectedRol)
+    : personal;
   
   // Manejar guardar personal
   const handleSavePersonal = async (personalData) => {
@@ -109,9 +113,11 @@ const Personal = () => {
   };
   
   // Manejar subida de documento
-  const handleDocumentUpload = async (file, tipo) => {
-    if (selectedPersonal) {
-      await handleUploadDocument(selectedPersonal.id, file, tipo);
+  const handleDocumentUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file && selectedPersonal) {
+      await handleUploadDocument(selectedPersonal.id, file, 'documento');
+      e.target.value = ''; // Reset file input
     }
   };
   
@@ -121,7 +127,7 @@ const Personal = () => {
       return (
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Cargando personal...</p>
+          <p>Cargando personal desde el servidor...</p>
         </div>
       );
     }
@@ -129,18 +135,22 @@ const Personal = () => {
     if (error) {
       return (
         <div className="error-message global-error">
-          <strong>Error:</strong> {error}
-          <button 
-            onClick={() => window.location.reload()}
-            style={{ marginLeft: '10px', padding: '5px 10px' }}
-          >
-            Reintentar
-          </button>
+          <strong>Error de conexión:</strong> {error}
+          <br />
+          <small>Verifique que el servidor backend esté en funcionamiento.</small>
+          <div style={{ marginTop: '15px' }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => window.location.reload()}
+            >
+              Reintentar conexión
+            </button>
+          </div>
         </div>
       );
     }
     
-    if (personal.length === 0) {
+    if (personal.length === 0 && !loading) {
       return (
         <div className="empty-state">
           <h3>No hay personal registrado</h3>
@@ -162,32 +172,44 @@ const Personal = () => {
           <table className="data-table">
             <thead>
               <tr>
-                <th>ID/Legajo</th>
+                <th>Legajo</th>
                 <th>Nombre</th>
                 <th>Apellido</th>
                 <th>DNI</th>
                 <th>CUIL</th>
+                <th>Teléfono</th>
+                <th>Email Corporativo</th>
                 <th>Sector</th>
                 <th>Cargo</th>
-                <th>Rol Sistema</th>
-                <th>Venc. Licencia</th>
+                <th>Rol</th>
+                <th>Licencia</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {personal.map((persona) => (
+              {filteredPersonal.map((persona) => (
                 <tr key={persona.id}>
-                  <td>{persona.legajo || persona.id}</td>
+                  <td>
+                    <strong>{persona.legajo || `P${String(persona.id).padStart(4, '0')}`}</strong>
+                  </td>
                   <td>{persona.nombre}</td>
                   <td>{persona.apellido}</td>
                   <td>{persona.dni}</td>
                   <td>{persona.cuil || 'N/A'}</td>
+                  <td>{persona.telefono || 'N/A'}</td>
+                  <td>
+                    {persona.correo_corporativo ? (
+                      <a href={`mailto:${persona.correo_corporativo}`} className="email-link">
+                        {persona.correo_corporativo}
+                      </a>
+                    ) : 'N/A'}
+                  </td>
                   <td>{persona.sector}</td>
                   <td>{persona.cargo || persona.puesto}</td>
                   <td>
-                    <span className={`rol-badge ${persona.rol === 'admin' ? 'rol-admin' : 'rol-usuario'}`}>
-                      {persona.rol === 'admin' ? 'Administrador' : 'Usuario'}
+                    <span className={`rol-badge ${(persona.rol_sistema || persona.rol) === 'admin' ? 'rol-admin' : 'rol-usuario'}`}>
+                      {(persona.rol_sistema || persona.rol) === 'admin' ? 'Administrador' : 'Usuario'}
                     </span>
                   </td>
                   <td>
@@ -201,8 +223,10 @@ const Personal = () => {
                     ) : 'N/A'}
                   </td>
                   <td>
-                    <span className={`status-badge ${persona.estado === 'Activo' ? 'status-active' : 'status-inactivo'}`}>
-                      {persona.estado}
+                    <span className={`status-badge ${
+                      (persona.estado === 'Activo' || persona.activo === 1) ? 'status-active' : 'status-inactivo'
+                    }`}>
+                      {persona.estado || (persona.activo === 1 ? 'Activo' : 'Inactivo')}
                     </span>
                   </td>
                   <td>
@@ -257,6 +281,7 @@ const Personal = () => {
             
             <span className="pagination-info">
               Página {pagination.current_page} de {pagination.total_pages}
+              <small> ({pagination.total} registros)</small>
             </span>
             
             <button
@@ -271,6 +296,9 @@ const Personal = () => {
       </>
     );
   };
+  
+  // Obtener sectores únicos para el filtro
+  const sectoresUnicos = [...new Set(personal.map(p => p.sector).filter(Boolean))];
   
   return (
     <div className="personal-page">
@@ -292,7 +320,7 @@ const Personal = () => {
           <div className="label">Empleados Activos</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">{personal.filter(p => p.rol === 'admin').length}</div>
+          <div className="number">{personal.filter(p => (p.rol_sistema || p.rol) === 'admin').length}</div>
           <div className="label">Administradores</div>
         </div>
         <div className="summary-card-small">
@@ -316,7 +344,7 @@ const Personal = () => {
               onClick={exportData}
               disabled={loading || personal.length === 0}
             >
-              <span className="btn-icon">📤</span> Exportar
+              <span className="btn-icon">📤</span> Exportar CSV
             </button>
             <button 
               className="btn btn-primary"
@@ -345,12 +373,9 @@ const Personal = () => {
             disabled={loading}
           >
             <option value="">Todos los sectores</option>
-            <option value="Administración">Administración</option>
-            <option value="Logística">Logística</option>
-            <option value="Operaciones">Operaciones</option>
-            <option value="Mantenimiento">Mantenimiento</option>
-            <option value="Incineración">Incineración</option>
-            <option value="Tratamiento">Tratamiento</option>
+            {sectoresUnicos.map(sector => (
+              <option key={sector} value={sector}>{sector}</option>
+            ))}
           </select>
           <select
             className="filter-select"
@@ -378,7 +403,7 @@ const Personal = () => {
             onClick={clearFilters}
             disabled={loading || (!searchTerm && !selectedSector && !selectedRol && !selectedEstado)}
           >
-            Limpiar
+            Limpiar Filtros
           </button>
         </div>
         
@@ -445,14 +470,18 @@ const Personal = () => {
           size="large"
         >
           <div className="documentos-container">
-            <h3>Documentación Escaneada</h3>
+            <div className="documentos-header">
+              <h3>Documentación Escaneada</h3>
+              <p>Legajo: <strong>{selectedPersonal.legajo}</strong></p>
+            </div>
+            
             <div className="documentos-list">
               {documents.length > 0 ? (
                 documents.map((doc, index) => (
                   <div key={index} className="documento-item">
                     <div className="documento-info">
-                      <strong>{doc.tipo}</strong>
-                      <small>{doc.fecha_subida}</small>
+                      <strong>{doc.tipo || 'Documento'}</strong>
+                      <small>{doc.fecha_subida || doc.created_at || 'Sin fecha'}</small>
                       {doc.vencimiento && (
                         <span className={`vencimiento ${
                           new Date(doc.vencimiento) < new Date() ? 'vencido' :
@@ -463,29 +492,59 @@ const Personal = () => {
                       )}
                     </div>
                     <div className="documento-actions">
-                      <button className="icon-btn" title="Descargar">📤</button>
+                      {doc.archivo && (
+                        <button 
+                          className="icon-btn" 
+                          title="Descargar"
+                          onClick={() => window.open(doc.archivo, '_blank')}
+                        >
+                          📤
+                        </button>
+                      )}
                       <button className="icon-btn" title="Eliminar">🗑️</button>
                     </div>
                   </div>
                 ))
               ) : (
-                <p>No hay documentos cargados</p>
+                <div className="empty-documents">
+                  <p>No hay documentos cargados para este empleado</p>
+                </div>
               )}
             </div>
             
             <div className="subir-documento">
               <h4>Subir nuevo documento</h4>
-              <select className="filter-select">
-                <option value="">Tipo de documento</option>
-                <option value="licencia_conducir">Licencia de Conducir</option>
-                <option value="certificado_capacitacion">Certificado de Capacitación</option>
-                <option value="carnet_cargas_peligrosas">Carnet Cargas Peligrosas</option>
-                <option value="contrato">Contrato Laboral</option>
-                <option value="seguro_vida">Seguro de Vida</option>
-              </select>
-              <input type="date" className="filter-select" placeholder="Fecha vencimiento" />
-              <input type="file" className="filter-select" accept=".pdf,.jpg,.jpeg,.png" />
-              <button className="btn btn-primary">Subir Documento</button>
+              <div className="upload-form">
+                <select className="filter-select" id="tipo-documento">
+                  <option value="">Tipo de documento</option>
+                  <option value="licencia_conducir">Licencia de Conducir</option>
+                  <option value="certificado_capacitacion">Certificado de Capacitación</option>
+                  <option value="carnet_cargas_peligrosas">Carnet Cargas Peligrosas</option>
+                  <option value="contrato">Contrato Laboral</option>
+                  <option value="dni">DNI</option>
+                  <option value="cv">Curriculum Vitae</option>
+                </select>
+                <input 
+                  type="date" 
+                  className="filter-select" 
+                  placeholder="Fecha vencimiento (opcional)" 
+                  id="fecha-vencimiento"
+                />
+                <input 
+                  type="file" 
+                  className="filter-select" 
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                  id="archivo-documento"
+                  onChange={handleDocumentUpload}
+                  disabled={uploadingDocument}
+                />
+                <button 
+                  className="btn btn-primary"
+                  disabled={uploadingDocument}
+                >
+                  {uploadingDocument ? 'Subiendo...' : 'Subir Documento'}
+                </button>
+              </div>
             </div>
           </div>
         </GenericModal>
@@ -500,6 +559,7 @@ const Personal = () => {
         >
           <div style={{ padding: '20px', textAlign: 'center' }}>
             <p>¿Está seguro de eliminar a <strong>{selectedPersonal.nombre} {selectedPersonal.apellido}</strong>?</p>
+            <p><small>Legajo: {selectedPersonal.legajo} - DNI: {selectedPersonal.dni}</small></p>
             <p><small>Esta acción no se puede deshacer.</small></p>
             <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
               <button 
@@ -515,7 +575,7 @@ const Personal = () => {
                 disabled={loading}
                 style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
               >
-                {loading ? 'Eliminando...' : 'Eliminar'}
+                {loading ? 'Eliminando...' : 'Eliminar Permanentemente'}
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-// src/services/personalService.js - VERSIÓN CORREGIDA PARA RUTAS NUEVAS
+// src/services/personalService.js - VERSIÓN COMPLETA CON TODOS LOS CAMPOS
 import api from './api';
 
 const LOG_LEVEL = {
@@ -52,28 +52,13 @@ const personalService = {
         ...(params.id && { id: params.id })
       };
 
-      // Llamada al endpoint - AHORA USA /api/personal/ (sin get_)
-      const response = await api.get('/personal/', { params: queryParams });
+      // Llamada al endpoint del backend REAL
+      const response = await api.get('/api/personal/get_personal.php', { params: queryParams });
       
       PersonalLogger.debug(`Respuesta recibida:`, response.data);
       
-      // Procesar respuesta
+      // Procesar respuesta del backend
       if (response.data && response.data.success !== false) {
-        // Si la respuesta es un array directo
-        if (Array.isArray(response.data)) {
-          PersonalLogger.info(`✅ Personal obtenido: ${response.data.length} registros`);
-          return {
-            success: true,
-            data: response.data,
-            pagination: {
-              current_page: queryParams.page,
-              per_page: queryParams.limit,
-              total: response.data.length,
-              total_pages: Math.ceil(response.data.length / queryParams.limit) || 1
-            }
-          };
-        }
-        
         // Si la respuesta tiene estructura { data: [...], pagination: {...} }
         if (response.data.data) {
           PersonalLogger.info(`✅ Personal obtenido: ${response.data.data.length} registros`);
@@ -89,7 +74,22 @@ const personalService = {
           };
         }
         
-        // Si solo es un objeto
+        // Si solo es un array directo
+        if (Array.isArray(response.data)) {
+          PersonalLogger.info(`✅ Personal obtenido: ${response.data.length} registros`);
+          return {
+            success: true,
+            data: response.data,
+            pagination: {
+              current_page: queryParams.page,
+              per_page: queryParams.limit,
+              total: response.data.length,
+              total_pages: Math.ceil(response.data.length / queryParams.limit) || 1
+            }
+          };
+        }
+        
+        // Si solo es un objeto individual
         PersonalLogger.info(`✅ Personal obtenido: objeto individual`);
         return {
           success: true,
@@ -103,7 +103,7 @@ const personalService = {
       
     } catch (error) {
       PersonalLogger.error('Error en getPersonal', {
-        endpoint: '/personal/',
+        endpoint: '/api/personal/get_personal.php',
         error: error.message,
         status: error.response?.status,
         data: error.response?.data
@@ -131,7 +131,7 @@ const personalService = {
     try {
       PersonalLogger.debug(`Buscando personal: "${searchTerm}"`);
       
-      const response = await api.get('/personal/search', {
+      const response = await api.get('/api/personal/search_personal.php', {
         params: { q: searchTerm, limit }
       });
       
@@ -149,27 +149,41 @@ const personalService = {
     }
   },
 
-  // 🎯 CREAR NUEVO PERSONAL
+  // 🎯 CREAR NUEVO PERSONAL CON TODOS LOS CAMPOS
   createPersonal: async (personalData) => {
     try {
-      PersonalLogger.info('Creando nuevo personal:', personalData);
+      PersonalLogger.info('Creando nuevo personal con campos completos:', personalData);
       
-      // Preparar datos para el backend
+      // Preparar datos completos para el backend
       const dataToSend = {
         nombre: personalData.nombre,
         apellido: personalData.apellido,
         dni: personalData.dni,
+        cuil: personalData.cuil || '',
+        legajo: personalData.legajo || '',
         telefono: personalData.telefono || '',
         email: personalData.email || '',
-        cargo: personalData.cargo || personalData.puesto || '',
+        correo_corporativo: personalData.correo_corporativo || '',
+        puesto: personalData.puesto || personalData.cargo || '',
         sector: personalData.sector || '',
+        rol_sistema: personalData.rol_sistema || personalData.rol || 'usuario',
         fecha_ingreso: personalData.fecha_ingreso || new Date().toISOString().split('T')[0],
-        estado: personalData.estado || 'Activo'
+        fecha_nacimiento: personalData.fecha_nacimiento || '',
+        direccion: personalData.direccion || '',
+        tipo_contrato: personalData.tipo_contrato || 'Planta Permanente',
+        estado_licencia: personalData.estado_licencia || '',
+        clase_licencia: personalData.clase_licencia || personalData.categoria_licencia || '',
+        vencimiento_licencia: personalData.vencimiento_licencia || '',
+        certificados: personalData.certificados || personalData.certificados_capacitacion || '',
+        carnet_cargas_peligrosas: personalData.carnet_cargas_peligrosas || '',
+        vencimiento_carnet: personalData.vencimiento_carnet || '',
+        observaciones: personalData.observaciones || '',
+        activo: personalData.activo !== undefined ? personalData.activo : 1
       };
       
-      const response = await api.post('/personal/create', dataToSend);
+      PersonalLogger.debug('Datos enviados al backend:', dataToSend);
       
-      PersonalLogger.debug('Respuesta create:', response.data);
+      const response = await api.post('/api/personal/create_personal.php', dataToSend);
       
       if (response.data?.success || response.status === 201) {
         const successMessage = response.data?.message || 'Personal creado exitosamente';
@@ -198,7 +212,7 @@ const personalService = {
       let errorMessage = 'Error al crear el personal';
       
       if (error.response?.status === 409) {
-        errorMessage = 'Ya existe personal con ese DNI';
+        errorMessage = 'Ya existe personal con ese DNI o legajo';
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       } else if (error.response?.data?.message) {
@@ -209,26 +223,40 @@ const personalService = {
     }
   },
 
-  // 🎯 ACTUALIZAR PERSONAL
+  // 🎯 ACTUALIZAR PERSONAL CON TODOS LOS CAMPOS
   updatePersonal: async (id, personalData) => {
     try {
       PersonalLogger.info(`Actualizando personal ID: ${id}`, personalData);
       
-      // Preparar datos para el backend
+      // Preparar datos completos para el backend
       const dataToSend = {
         id: id,
         nombre: personalData.nombre,
         apellido: personalData.apellido,
         dni: personalData.dni,
+        cuil: personalData.cuil || '',
+        legajo: personalData.legajo || '',
         telefono: personalData.telefono || '',
         email: personalData.email || '',
-        cargo: personalData.cargo || personalData.puesto || '',
+        correo_corporativo: personalData.correo_corporativo || '',
+        puesto: personalData.puesto || personalData.cargo || '',
         sector: personalData.sector || '',
-        fecha_ingreso: personalData.fecha_ingreso,
-        estado: personalData.estado || 'Activo'
+        rol_sistema: personalData.rol_sistema || personalData.rol || 'usuario',
+        fecha_ingreso: personalData.fecha_ingreso || '',
+        fecha_nacimiento: personalData.fecha_nacimiento || '',
+        direccion: personalData.direccion || '',
+        tipo_contrato: personalData.tipo_contrato || '',
+        estado_licencia: personalData.estado_licencia || '',
+        clase_licencia: personalData.clase_licencia || personalData.categoria_licencia || '',
+        vencimiento_licencia: personalData.vencimiento_licencia || '',
+        certificados: personalData.certificados || personalData.certificados_capacitacion || '',
+        carnet_cargas_peligrosas: personalData.carnet_cargas_peligrosas || '',
+        vencimiento_carnet: personalData.vencimiento_carnet || '',
+        observaciones: personalData.observaciones || '',
+        activo: personalData.activo !== undefined ? personalData.activo : 1
       };
       
-      const response = await api.put('/personal/update', dataToSend);
+      const response = await api.put('/api/personal/update_personal.php', dataToSend);
       
       if (response.data?.success || response.status === 200) {
         const successMessage = response.data?.message || 'Personal actualizado exitosamente';
@@ -264,7 +292,7 @@ const personalService = {
     try {
       PersonalLogger.info(`Eliminando personal ID: ${id}`);
       
-      const response = await api.delete('/personal/delete', { 
+      const response = await api.delete('/api/personal/delete_personal.php', { 
         data: { id: id }
       });
       
@@ -318,7 +346,7 @@ const personalService = {
       formData.append('archivo', file);
       formData.append('descripcion', file.name);
       
-      const response = await api.post('/documentos', formData, {
+      const response = await api.post('/api/documentos.php', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -349,7 +377,7 @@ const personalService = {
     try {
       PersonalLogger.info(`Obteniendo documentos para personal ID: ${personalId}`);
       
-      const response = await api.get('/documentos', {
+      const response = await api.get('/api/documentos.php', {
         params: { personal_id: personalId }
       });
       

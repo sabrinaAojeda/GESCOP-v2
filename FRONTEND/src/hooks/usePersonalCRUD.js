@@ -1,4 +1,4 @@
-// src/hooks/usePersonalCRUD.js - VERSIÓN CORREGIDA Y SIMPLIFICADA
+// src/hooks/usePersonalCRUD.js - VERSIÓN CONECTADA AL BACKEND REAL
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { personalService } from '../services';
 import { useModal } from './useModal';
@@ -6,7 +6,7 @@ import { useModal } from './useModal';
 const usePersonalCRUD = () => {
   // Estados principales
   const [personal, setPersonal] = useState([]);
-  const [loading, setLoading] = useState(true); // Iniciar como true para mostrar loader inicial
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedPersonal, setSelectedPersonal] = useState(null);
   
@@ -40,13 +40,12 @@ const usePersonalCRUD = () => {
   // Refs para control
   const mountedRef = useRef(true);
   const searchTimeoutRef = useRef(null);
-  const isInitialLoadRef = useRef(true);
 
   // 🔄 FUNCIÓN PRINCIPAL PARA CARGAR PERSONAL
   const loadPersonal = useCallback(async (newFilters = {}) => {
     if (!mountedRef.current) return;
     
-    console.log('📡 [usePersonalCRUD] Cargando personal...');
+    console.log('📡 [usePersonalCRUD] Cargando personal desde backend...');
     setLoading(true);
     setError(null);
     
@@ -64,7 +63,30 @@ const usePersonalCRUD = () => {
       if (result.success) {
         console.log(`✅ [usePersonalCRUD] Carga exitosa: ${result.data?.length || 0} registros`);
         
-        setPersonal(result.data || []);
+        // Procesar datos del backend
+        const processedData = (result.data || []).map(person => ({
+          ...person,
+          // Asegurar que todos los campos estén presentes
+          legajo: person.legajo || `P${String(person.id).padStart(4, '0')}`,
+          correo_corporativo: person.correo_corporativo || person.email_corporativo || '',
+          cuil: person.cuil || '',
+          telefono: person.telefono || '',
+          licencia_conducir: person.licencia_conducir || '',
+          vencimiento_licencia: person.vencimiento_licencia || '',
+          categoria_licencia: person.categoria_licencia || person.clase_licencia || '',
+          carnet_cargas_peligrosas: person.carnet_cargas_peligrosas || '',
+          vencimiento_carnet: person.vencimiento_carnet || '',
+          rol: person.rol_sistema || person.rol || 'usuario',
+          base_operativa: person.base_operativa || '',
+          habilitacion_tipo: person.habilitacion_tipo || '',
+          tipo_contrato: person.tipo_contrato || 'Planta Permanente',
+          fecha_nacimiento: person.fecha_nacimiento || '',
+          direccion: person.direccion || '',
+          observaciones: person.observaciones || '',
+          certificados_capacitacion: person.certificados_capacitacion || ''
+        }));
+        
+        setPersonal(processedData);
         setPagination(result.pagination || {
           current_page: updatedFilters.page,
           per_page: updatedFilters.limit,
@@ -74,11 +96,6 @@ const usePersonalCRUD = () => {
         
         setFilters(updatedFilters);
         
-        // Si es carga inicial, marcar como completada
-        if (isInitialLoadRef.current) {
-          isInitialLoadRef.current = false;
-          console.log('✅ [usePersonalCRUD] Carga inicial completada');
-        }
       } else {
         throw new Error(result.error || 'Error al cargar el personal');
       }
@@ -86,57 +103,17 @@ const usePersonalCRUD = () => {
       console.error('💥 [usePersonalCRUD] Error:', err.message);
       setError(err.message || 'Error al cargar el personal');
       
-      // Para debugging, mostrar datos mock si hay error
+      // NO usar datos mock en producción
       if (import.meta.env.DEV) {
-        console.log('🔄 [usePersonalCRUD] Usando datos mock para desarrollo');
-        setPersonal([
-          {
-            id: 1,
-            legajo: 'P0001',
-            nombre: 'Juan',
-            apellido: 'Pérez',
-            dni: '30123456',
-            telefono: '011-1234-5678',
-            email: 'juan.perez@empresa.com',
-            sector: 'Logística',
-            cargo: 'Operador',
-            estado: 'Activo',
-            fecha_ingreso: '2023-01-15'
-          },
-          {
-            id: 2,
-            legajo: 'P0002',
-            nombre: 'María',
-            apellido: 'Gómez',
-            dni: '28987654',
-            telefono: '011-8765-4321',
-            email: 'maria.gomez@empresa.com',
-            sector: 'Administración',
-            cargo: 'Supervisora',
-            estado: 'Activo',
-            fecha_ingreso: '2022-05-20'
-          },
-          {
-            id: 3,
-            legajo: 'P0003',
-            nombre: 'Carlos',
-            apellido: 'Rodríguez',
-            dni: '32123456',
-            telefono: '011-5555-6666',
-            email: 'carlos.rodriguez@empresa.com',
-            sector: 'Mantenimiento',
-            cargo: 'Técnico',
-            estado: 'Inactivo',
-            fecha_ingreso: '2021-11-10'
-          }
-        ]);
+        console.warn('🔄 [usePersonalCRUD] Modo desarrollo - Revisar conexión backend');
+        // Dejar arrays vacíos para forzar la conexión real
+        setPersonal([]);
         setPagination({
           current_page: 1,
           per_page: 10,
-          total: 3,
-          total_pages: 1
+          total: 0,
+          total_pages: 0
         });
-        setError(null); // Limpiar error para mostrar datos mock
       }
     } finally {
       if (mountedRef.current) {
@@ -180,13 +157,41 @@ const usePersonalCRUD = () => {
     loadPersonal(defaultFilters);
   }, [loadPersonal]);
 
-  // ➕ CREAR NUEVO PERSONAL
+  // ➕ CREAR NUEVO PERSONAL - CON TODOS LOS CAMPOS
   const handleCreate = useCallback(async (personalData) => {
     setLoading(true);
     
     try {
       console.log('➕ [usePersonalCRUD] Creando personal:', personalData);
-      const result = await personalService.createPersonal(personalData);
+      
+      // Preparar datos completos para el backend
+      const dataToSend = {
+        nombre: personalData.nombre,
+        apellido: personalData.apellido,
+        dni: personalData.dni,
+        cuil: personalData.cuil,
+        legajo: personalData.legajo,
+        telefono: personalData.telefono,
+        email: personalData.email,
+        correo_corporativo: personalData.correo_corporativo,
+        puesto: personalData.cargo,
+        sector: personalData.sector,
+        rol_sistema: personalData.rol,
+        fecha_ingreso: personalData.fecha_ingreso,
+        fecha_nacimiento: personalData.fecha_nacimiento,
+        direccion: personalData.direccion,
+        tipo_contrato: personalData.tipo_contrato,
+        estado_licencia: personalData.licencia_conducir ? 'Vigente' : '',
+        clase_licencia: personalData.categoria_licencia,
+        vencimiento_licencia: personalData.vencimiento_licencia,
+        certificados: personalData.certificados_capacitacion,
+        carnet_cargas_peligrosas: personalData.carnet_cargas_peligrosas,
+        vencimiento_carnet: personalData.vencimiento_carnet,
+        observaciones: personalData.observaciones,
+        activo: personalData.estado === 'Activo' ? 1 : 0
+      };
+      
+      const result = await personalService.createPersonal(dataToSend);
       
       if (result.success) {
         alert('✅ ' + (result.message || 'Personal creado exitosamente'));
@@ -203,13 +208,42 @@ const usePersonalCRUD = () => {
     }
   }, [loadPersonal, createModal]);
 
-  // ✏️ EDITAR PERSONAL
+  // ✏️ EDITAR PERSONAL - CON TODOS LOS CAMPOS
   const handleEdit = useCallback(async (id, personalData) => {
     setLoading(true);
     
     try {
       console.log(`✏️ [usePersonalCRUD] Editando ID: ${id}`, personalData);
-      const result = await personalService.updatePersonal(id, personalData);
+      
+      // Preparar datos completos para el backend
+      const dataToSend = {
+        id: id,
+        nombre: personalData.nombre,
+        apellido: personalData.apellido,
+        dni: personalData.dni,
+        cuil: personalData.cuil,
+        legajo: personalData.legajo,
+        telefono: personalData.telefono,
+        email: personalData.email,
+        correo_corporativo: personalData.correo_corporativo,
+        puesto: personalData.cargo,
+        sector: personalData.sector,
+        rol_sistema: personalData.rol,
+        fecha_ingreso: personalData.fecha_ingreso,
+        fecha_nacimiento: personalData.fecha_nacimiento,
+        direccion: personalData.direccion,
+        tipo_contrato: personalData.tipo_contrato,
+        estado_licencia: personalData.licencia_conducir ? 'Vigente' : '',
+        clase_licencia: personalData.categoria_licencia,
+        vencimiento_licencia: personalData.vencimiento_licencia,
+        certificados: personalData.certificados_capacitacion,
+        carnet_cargas_peligrosas: personalData.carnet_cargas_peligrosas,
+        vencimiento_carnet: personalData.vencimiento_carnet,
+        observaciones: personalData.observaciones,
+        activo: personalData.estado === 'Activo' ? 1 : 0
+      };
+      
+      const result = await personalService.updatePersonal(id, dataToSend);
       
       if (result.success) {
         alert('✅ ' + (result.message || 'Personal actualizado exitosamente'));
@@ -241,13 +275,7 @@ const usePersonalCRUD = () => {
       if (result.success) {
         alert('✅ ' + (result.message || 'Personal eliminado exitosamente'));
         deleteModal.closeModal();
-        
-        // Actualizar lista local
-        setPersonal(prev => prev.filter(item => item.id !== id));
-        setPagination(prev => ({
-          ...prev,
-          total: prev.total - 1
-        }));
+        await loadPersonal({ page: 1 });
       } else {
         throw new Error(result.error || 'Error al eliminar el personal');
       }
@@ -257,7 +285,7 @@ const usePersonalCRUD = () => {
     } finally {
       setLoading(false);
     }
-  }, [deleteModal]);
+  }, [deleteModal, loadPersonal]);
 
   // 📄 GESTIÓN DE DOCUMENTOS
   const loadDocuments = useCallback(async (personalId) => {
@@ -271,6 +299,8 @@ const usePersonalCRUD = () => {
       }
     } catch (err) {
       console.error('💥 [usePersonalCRUD] Error loading documents:', err);
+      // Si no hay endpoint de documentos, mostrar array vacío
+      setDocuments([]);
     }
   }, []);
 
@@ -306,8 +336,8 @@ const usePersonalCRUD = () => {
 
   // 📊 CALCULAR ESTADÍSTICAS
   const calculateStats = useCallback(() => {
-    const active = personal.filter(p => p.estado === 'Activo').length;
-    const inactive = personal.filter(p => p.estado === 'Inactivo').length;
+    const active = personal.filter(p => p.estado === 'Activo' || p.activo === 1).length;
+    const inactive = personal.filter(p => p.estado === 'Inactivo' || p.activo === 0).length;
     const total = personal.length;
     
     return { active, inactive, total };
@@ -325,7 +355,7 @@ const usePersonalCRUD = () => {
   }, [editModal]);
 
   const openViewModal = useCallback((person) => {
-    setSelectedPerson(person);
+    setSelectedPersonal(person);
     viewModal.openModal();
   }, [viewModal]);
 
@@ -349,21 +379,30 @@ const usePersonalCRUD = () => {
       }
       
       const dataToExport = personal.map(person => ({
-        Legajo: person.legajo || person.id,
+        Legajo: person.legajo,
         Nombre: person.nombre,
         Apellido: person.apellido,
         DNI: person.dni,
+        CUIL: person.cuil,
+        Teléfono: person.telefono,
+        'Email Personal': person.email,
+        'Email Corporativo': person.correo_corporativo,
         Sector: person.sector,
         Cargo: person.cargo || person.puesto,
-        Estado: person.estado,
-        'Teléfono': person.telefono,
-        'Email': person.email,
-        'Fecha Ingreso': person.fecha_ingreso
+        'Rol Sistema': person.rol_sistema || person.rol,
+        'Fecha Ingreso': person.fecha_ingreso,
+        'Fecha Nacimiento': person.fecha_nacimiento,
+        'Licencia Conducir': person.licencia_conducir,
+        'Vencimiento Licencia': person.vencimiento_licencia,
+        'Categoría Licencia': person.categoria_licencia || person.clase_licencia,
+        'Carnet Cargas Peligrosas': person.carnet_cargas_peligrosas,
+        'Vencimiento Carnet': person.vencimiento_carnet,
+        Estado: person.estado
       }));
       
       const headers = Object.keys(dataToExport[0] || {}).join(',');
       const rows = dataToExport.map(row => 
-        Object.values(row).map(value => `"${value}"`).join(',')
+        Object.values(row).map(value => `"${value || ''}"`).join(',')
       ).join('\n');
       
       const csv = `${headers}\n${rows}`;
@@ -382,15 +421,13 @@ const usePersonalCRUD = () => {
     }
   }, [personal]);
 
-  // 🏁 INICIALIZACIÓN - SOLO UNA VEZ
+  // 🏁 INICIALIZACIÓN
   useEffect(() => {
     mountedRef.current = true;
     
-    // Cargar datos iniciales
-    if (isInitialLoadRef.current) {
-      console.log('🚀 [usePersonalCRUD] Ejecutando carga inicial');
-      loadPersonal();
-    }
+    // Cargar datos iniciales desde el backend
+    console.log('🚀 [usePersonalCRUD] Ejecutando carga inicial desde backend');
+    loadPersonal();
     
     return () => {
       mountedRef.current = false;
@@ -398,7 +435,7 @@ const usePersonalCRUD = () => {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, []); // ✅ DEPENDENCIAS VACÍAS - SOLO UNA VEZ
+  }, []);
 
   const stats = calculateStats();
 
