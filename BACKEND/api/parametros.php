@@ -1,28 +1,16 @@
 <?php
-header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
-require_once '../config/database.php';
-require_once '../models/Parametro.php';
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/models/Parametro.php';
 
 $database = new Database();
 $db = $database->getConnection();
 $parametro = new Parametro($db);
 
 $method = $_SERVER['REQUEST_METHOD'];
-
-function sendResponse($success, $message = '', $data = null, $httpCode = 200) {
-    http_response_code($httpCode);
-    echo json_encode([
-        'success' => $success,
-        'message' => $message,
-        'data' => $data
-    ]);
-    exit();
-}
 
 try {
     switch($method) {

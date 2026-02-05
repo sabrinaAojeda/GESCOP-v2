@@ -1,82 +1,68 @@
 <?php
-header('Content-Type: text/plain');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// BACKEND/config/database.php - VERSIÓN CORREGIDA
+class Database {
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
+    public $conn;
 
-echo "🔍 VERIFICACIÓN COMPLETA DE BASE DE DATOS\n";
-echo "=========================================\n\n";
+    public function __construct() {
+        $this->host = "localhost";
+        $this->db_name = "gescopv1_gescopdb";
+        $this->username = "gescopv1_gescopb";
+        $this->password = "GESCOPC.o+-30640956336";
+    }
 
-// Probamos diferentes combinaciones
-$configs = [
-    [
-        'host' => 'localhost',
-        'dbname' => 'gescopve_gescopdb',
-        'username' => 'gescopve_gescopbd',
-        'password' => 'GESCOPcontrasenia1234'
-    ],
-    [
-        'host' => 'localhost',
-        'dbname' => 'gescopve_gescopdb',
-        'username' => 'gescopve_flota',
-        'password' => 'GESCOPcontrasenia1234'
-    ],
-    [
-        'host' => '127.0.0.1',
-        'dbname' => 'gescopve_gescopdb',
-        'username' => 'gescopve_gescopbd',
-        'password' => 'GESCOPcontrasenia1234'
-    ]
-];
+    public function getConnection() {
+        $this->conn = null;
 
-foreach ($configs as $i => $config) {
-    echo "\n🧪 Prueba #" . ($i + 1) . ":\n";
-    echo "   Host: " . $config['host'] . "\n";
-    echo "   BD: " . $config['dbname'] . "\n";
-    echo "   Usuario: " . $config['username'] . "\n";
-    
-    try {
-        $pdo = new PDO(
-            "mysql:host=" . $config['host'] . ";dbname=" . $config['dbname'] . ";charset=utf8mb4",
-            $config['username'],
-            $config['password'],
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
-        
-        echo "   ✅ CONEXIÓN EXITOSA\n";
-        
-        // Verificar tablas
-        $stmt = $pdo->query("SHOW TABLES");
-        $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
-        echo "   📊 Tablas encontradas: " . count($tables) . "\n";
-        
-        // Verificar tablas específicas
-        $required_tables = ['vehiculos', 'personal'];
-        foreach ($required_tables as $table) {
-            if (in_array($table, $tables)) {
-                echo "   ✅ Tabla '$table' existe\n";
-            } else {
-                echo "   ❌ Tabla '$table' NO existe\n";
-            }
+        try {
+            $dsn = "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4";
+            
+            $this->conn = new PDO($dsn, $this->username, $this->password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
+            ]);
+            
+            error_log("✅ [DATABASE] Conexión exitosa a: " . $this->db_name);
+            
+        } catch(PDOException $e) {
+            error_log("❌ [DATABASE ERROR] " . $e->getMessage());
+            
+            // Mensaje amigable para frontend
+            throw new Exception("Error de conexión a la base de datos. Verifique la configuración.");
         }
-        
-        // Esta es la configuración correcta
-        echo "\n🎉 CONFIGURACIÓN CORRECTA ENCONTRADA!\n";
-        echo "Usa estos valores en database.php:\n";
-        echo "Host: " . $config['host'] . "\n";
-        echo "DB: " . $config['dbname'] . "\n"; 
-        echo "User: " . $config['username'] . "\n";
-        
-        break;
-        
-    } catch (PDOException $e) {
-        echo "   ❌ ERROR: " . $e->getMessage() . "\n";
+
+        return $this->conn;
+    }
+
+    // Método para verificar tablas
+    public function checkTables() {
+        try {
+            $required_tables = ['vehiculos', 'vehiculos_vendidos', 'equipamientos', 'personal'];
+            $missing_tables = [];
+            
+            foreach ($required_tables as $table) {
+                $stmt = $this->conn->query("SHOW TABLES LIKE '$table'");
+                if ($stmt->rowCount() == 0) {
+                    $missing_tables[] = $table;
+                }
+            }
+            
+            if (!empty($missing_tables)) {
+                error_log("⚠️ [DATABASE] Tablas faltantes: " . implode(', ', $missing_tables));
+                return false;
+            }
+            
+            return true;
+            
+        } catch (Exception $e) {
+            error_log("❌ [DATABASE CHECK] Error: " . $e->getMessage());
+            return false;
+        }
     }
 }
-
-echo "\n\n🔧 RECOMENDACIONES:\n";
-echo "1. Ve a cPanel → MySQL Databases\n";
-echo "2. Verifica el usuario EXACTO y su contraseña\n";
-echo "3. Asegúrate que el usuario esté asignado a la BD\n";
-echo "4. Los privilegios deben incluir: SELECT, INSERT, UPDATE, DELETE\n";
 ?>

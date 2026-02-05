@@ -1,0 +1,119 @@
+/* src/components/Common/FilterBar.css */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+  align-items: flex-end;
+}
+
+.filter-bar-search {
+  flex: 1;
+  min-width: 250px;
+}
+
+.filter-bar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-bar-reset {
+  display: flex;
+  align-items: flex-end;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.filter-select {
+  padding: 0.625rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background-color: #fff;
+  cursor: pointer;
+  min-width: 150px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.filter-reset-btn {
+  padding: 0.625rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.filter-reset-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.filter-reset-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-bar-search,
+  .filter-bar-filters,
+  .filter-bar-reset {
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+}

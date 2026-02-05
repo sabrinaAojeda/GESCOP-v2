@@ -174,7 +174,85 @@ const proveedoresService = {
       });
       throw error;
     }
+  },
+
+  // 🎯 OBTENER PERSONAL DE UN PROVEEDOR
+  getPersonalProveedor: async (proveedorId) => {
+    try {
+      ProveedoresLogger.info(`Obteniendo personal del proveedor ID: ${proveedorId}`);
+      const response = await api.get(`/proveedores/proveedor_personal`, {
+        params: { proveedor_id: proveedorId }
+      });
+
+      if (response.data) {
+        ProveedoresLogger.debug('✅ Personal del proveedor obtenido exitosamente');
+        return response.data;
+      } else {
+        ProveedoresLogger.warn('Error en respuesta');
+        return { success: false, data: [] };
+      }
+    } catch (error) {
+      ProveedoresLogger.error('Error obteniendo personal del proveedor:', {
+        proveedorId,
+        error: error.message
+      });
+      return { success: false, data: [] };
+    }
+  },
+
+  // 🎯 OBTENER DOCUMENTOS DE UN PROVEEDOR
+  getDocumentosProveedor: async (proveedorId) => {
+    try {
+      ProveedoresLogger.info(`Obteniendo documentos del proveedor ID: ${proveedorId}`);
+      const response = await api.get(`/proveedores/documentos_proveedor`, {
+        params: { proveedor_id: proveedorId }
+      });
+
+      if (response.data) {
+        ProveedoresLogger.debug('✅ Documentos del proveedor obtenidos exitosamente');
+        return response.data;
+      } else {
+        ProveedoresLogger.warn('Error en respuesta de documentos');
+        return { success: false, data: [] };
+      }
+    } catch (error) {
+      ProveedoresLogger.error('Error obteniendo documentos del proveedor:', {
+        proveedorId,
+        error: error.message
+      });
+      return { success: false, data: [] };
+    }
+  },
+
+  // 🎯 CARGA MASIVA DE PROVEEDORES
+  cargaMasivaProveedores: async (data) => {
+    try {
+      ProveedoresLogger.info('Ejecutando carga masiva de proveedores', { registros: data.length });
+      
+      const response = await api.post('/proveedores/carga_masiva_proveedores', data);
+      
+      if (response.data?.success) {
+        ProveedoresLogger.info('✅ Carga masiva exitosa', response.data);
+        return {
+          success: true,
+          message: response.data.message,
+          resumen: response.data.resumen,
+          detalle_errores: response.data.detalle_errores
+        };
+      } else {
+        const errorMsg = response.data?.message || 'Error en carga masiva';
+        ProveedoresLogger.warn('Error en carga masiva:', response.data);
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      ProveedoresLogger.error('Error en carga masiva:', {
+        error: error.message,
+        status: error.response?.status
+      });
+      throw error;
+    }
   }
 };
 
-export { proveedoresService, ProveedoresLogger };
+export default proveedoresService;
+export { ProveedoresLogger };

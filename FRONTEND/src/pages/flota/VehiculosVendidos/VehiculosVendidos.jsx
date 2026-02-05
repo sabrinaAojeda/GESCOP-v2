@@ -5,15 +5,35 @@ import GenericModal from "@components/Common/GenericModal";
 import ColumnSelectorVehiculosVendidos from "@components/Common/ColumnSelectorVehiculosVendidos";
 import ModalVehiculoVendido from "@components/Common/ModalVehiculoVendido";
 import ModalDocumentacion from "@components/Common/ModalDocumentacion";
+import useExportXLSX from "@hooks/useExportXLSX";
 import "./VehiculosVendidos.css";
 
 const VehiculosVendidos = () => {
-  const { vehiculosVendidos, loading, error, agregarVehiculoVendido, actualizarVehiculoVendido, eliminarVehiculoVendido } = useVehiculosVendidos();
+  const { 
+    vehiculosVendidos, 
+    loading, 
+    error, 
+    selectedVehiculoVendido,
+    createVehiculoVendido, 
+    updateVehiculoVendido, 
+    deleteVehiculoVendido,
+    isCreateModalOpen,
+    isEditModalOpen,
+    isViewModalOpen,
+    isDocumentacionModalOpen,
+    openCreateModal,
+    openEditModal,
+    openViewModal,
+    openDocumentacionModal,
+    closeCreateModal,
+    closeEditModal,
+    closeViewModal,
+    closeDocumentacionModal
+  } = useVehiculosVendidos();
+  const { exportToXLSX } = useExportXLSX();
   
   // Estados para la gestión de la UI
   const [vehiculosFiltrados, setVehiculosFiltrados] = useState([]);
-  const [modalAbierto, setModalAbierto] = useState(null);
-  const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(null);
   const [mostrarColumnSelector, setMostrarColumnSelector] = useState(false);
   const [filtros, setFiltros] = useState({
     buscar: '',
@@ -22,15 +42,15 @@ const VehiculosVendidos = () => {
     año: ''
   });
 
-  // Estado para columnas visibles
+  // Estado para columnas visibles (5 principales por defecto)
   const [columnasVisibles, setColumnasVisibles] = useState({
     'interno': true,
     'dominio': true,
     'marca_modelo': true,
     'fecha_venta': true,
     'comprador': true,
-    'precio': true,
-    'estado_documentacion': true,
+    'precio': false,
+    'estado_documentacion': false,
     'kilometraje_venta': false,
     'observaciones': false
   });
@@ -71,30 +91,17 @@ const VehiculosVendidos = () => {
     setVehiculosFiltrados(resultados);
   }, [vehiculosVendidos, filtros]);
 
-  // Handlers para los modales
-  const abrirModalNuevo = () => {
-    setModalAbierto('nuevo');
-    setVehiculoSeleccionado(null);
-  };
-
+  // Handlers para los modales - Usando funciones del hook
   const abrirModalVer = (vehiculo) => {
-    setModalAbierto('ver');
-    setVehiculoSeleccionado(vehiculo);
+    openViewModal(vehiculo);
   };
 
   const abrirModalEditar = (vehiculo) => {
-    setModalAbierto('editar');
-    setVehiculoSeleccionado(vehiculo);
+    openEditModal(vehiculo);
   };
 
   const abrirModalDocumentacion = (vehiculo) => {
-    setModalAbierto('documentacion');
-    setVehiculoSeleccionado(vehiculo);
-  };
-
-  const cerrarModal = () => {
-    setModalAbierto(null);
-    setVehiculoSeleccionado(null);
+    openDocumentacionModal(vehiculo);
   };
 
   // Handlers para ColumnSelector
@@ -116,33 +123,42 @@ const VehiculosVendidos = () => {
   // Handlers para CRUD
   const handleCrearVehiculoVendido = (datosVehiculo) => {
     console.log('Registrando vehículo vendido:', datosVehiculo);
-    agregarVehiculoVendido(datosVehiculo);
-    cerrarModal();
-    alert('Vehículo vendido registrado correctamente');
+    createVehiculoVendido(datosVehiculo)
+      .then((result) => {
+        if (result.success) {
+          alert('Vehículo vendido registrado correctamente');
+        } else {
+          alert('Error: ' + result.error);
+        }
+      });
   };
 
   const handleActualizarVehiculoVendido = (datosVehiculo) => {
     console.log('Actualizando vehículo vendido:', datosVehiculo);
-    actualizarVehiculoVendido(vehiculoSeleccionado.id, datosVehiculo);
-    cerrarModal();
-    alert('Vehículo vendido actualizado correctamente');
+    updateVehiculoVendido(selectedVehiculoVendido.id, datosVehiculo)
+      .then((result) => {
+        if (result.success) {
+          alert('Vehículo vendido actualizado correctamente');
+        } else {
+          alert('Error: ' + result.error);
+        }
+      });
   };
 
   const handleEliminarVehiculoVendido = (id) => {
     const vehiculo = vehiculosVendidos.find(v => v.id === id);
     if (vehiculo && window.confirm(`¿Está seguro de eliminar el registro de venta del vehículo ${vehiculo.marca_modelo} (${vehiculo.dominio})? Esta acción no se puede deshacer.`)) {
-      eliminarVehiculoVendido(id);
+      deleteVehiculoVendido(id);
     }
   };
 
   const handleGuardarDocumentacion = (documentos) => {
-    if (vehiculoSeleccionado) {
-      actualizarVehiculoVendido(vehiculoSeleccionado.id, {
-        ...vehiculoSeleccionado,
+    if (selectedVehiculoVendido) {
+      updateVehiculoVendido(selectedVehiculoVendido.id, {
+        ...selectedVehiculoVendido,
         documentos: documentos
       });
     }
-    cerrarModal();
   };
 
   // Función para formatear fecha
@@ -178,6 +194,23 @@ const VehiculosVendidos = () => {
       default:
         return '';
     }
+  };
+
+  // Función para exportar a XLSX
+  const handleExportarXLSX = () => {
+    const datosParaExportar = vehiculosFiltrados.map(vehiculo => ({
+      'Interno': vehiculo.interno || '',
+      'Dominio': vehiculo.dominio || '',
+      'Marca/Modelo': vehiculo.marca_modelo || '',
+      'Fecha Venta': formatearFecha(vehiculo.fecha_venta),
+      'Comprador': vehiculo.comprador || '',
+      'Precio': vehiculo.precio || '',
+      'Estado Documentación': vehiculo.estado_documentacion || '',
+      'Kilometraje Venta': vehiculo.kilometraje_venta || '',
+      'Observaciones': vehiculo.observaciones || ''
+    }));
+    
+    exportToXLSX(datosParaExportar, 'vehiculos_vendidos');
   };
 
   if (loading) return <div className="loading">Cargando vehículos vendidos...</div>;
@@ -222,13 +255,13 @@ const VehiculosVendidos = () => {
         <div className="section-header">
           <h2 className="section-title">💰 Vehículos Vendidos</h2>
           <div className="table-toolbar">
-            <button className="btn btn-secondary" onClick={abrirColumnSelector}>
+            <button className="teal" onClick={abrirColumnSelector}>
               <span>👁️</span> Columnas
             </button>
-            <button className="btn btn-secondary">
+            <button className="blue" onClick={handleExportarXLSX}>
               <span>📤</span> Exportar
             </button>
-            <button className="btn btn-primary" onClick={abrirModalNuevo}>
+            <button className="green" onClick={openCreateModal}>
               <span>+</span> Registrar Venta
             </button>
           </div>
@@ -277,7 +310,8 @@ const VehiculosVendidos = () => {
         </div>
 
         {/* Tabla */}
-        <table className="data-table">
+        <div className="data-table-wrapper">
+          <table className="data-table">
           <thead>
             <tr>
               {columnasVisibles.interno && <th>INT.</th>}
@@ -346,6 +380,7 @@ const VehiculosVendidos = () => {
             ))}
           </tbody>
         </table>
+        </div>
         
         <div className="contador">
           Mostrando {vehiculosFiltrados.length} de {vehiculosVendidos.length} vehículos vendidos
@@ -353,10 +388,10 @@ const VehiculosVendidos = () => {
       </section>
 
       {/* Modal Ver Vehículo Vendido */}
-      {modalAbierto === 'ver' && vehiculoSeleccionado && (
+      {isViewModalOpen && selectedVehiculoVendido && (
         <GenericModal
-          title={`👁️ Detalles de Venta - ${vehiculoSeleccionado.dominio}`}
-          onClose={cerrarModal}
+          title={`👁️ Detalles de Venta - ${selectedVehiculoVendido.dominio}`}
+          onClose={closeViewModal}
           size="xlarge"
         >
           <div className="vehicle-details-modal">
@@ -364,39 +399,39 @@ const VehiculosVendidos = () => {
               <div>
                 <div className="detail-group">
                   <div className="detail-label">Interno</div>
-                  <div className="detail-value">{vehiculoSeleccionado.interno}</div>
+                  <div className="detail-value">{selectedVehiculoVendido.interno}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Dominio</div>
-                  <div className="detail-value">{vehiculoSeleccionado.dominio}</div>
+                  <div className="detail-value">{selectedVehiculoVendido.dominio}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Marca/Modelo</div>
-                  <div className="detail-value">{vehiculoSeleccionado.marca_modelo}</div>
+                  <div className="detail-value">{selectedVehiculoVendido.marca_modelo}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Fecha de Venta</div>
-                  <div className="detail-value">{formatearFecha(vehiculoSeleccionado.fecha_venta)}</div>
+                  <div className="detail-value">{formatearFecha(selectedVehiculoVendido.fecha_venta)}</div>
                 </div>
               </div>
               <div>
                 <div className="detail-group">
                   <div className="detail-label">Comprador</div>
-                  <div className="detail-value">{vehiculoSeleccionado.comprador}</div>
+                  <div className="detail-value">{selectedVehiculoVendido.comprador}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Precio de Venta</div>
-                  <div className="detail-value">{formatearPrecio(vehiculoSeleccionado.precio)}</div>
+                  <div className="detail-value">{formatearPrecio(selectedVehiculoVendido.precio)}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Kilometraje al Vender</div>
-                  <div className="detail-value">{vehiculoSeleccionado.kilometraje_venta ? `${vehiculoSeleccionado.kilometraje_venta.toLocaleString()} km` : 'No registrado'}</div>
+                  <div className="detail-value">{selectedVehiculoVendido.kilometraje_venta ? `${selectedVehiculoVendido.kilometraje_venta.toLocaleString()} km` : 'No registrado'}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Estado Documentación</div>
                   <div className="detail-value">
-                    <span className={`status-badge ${getEstadoClass(vehiculoSeleccionado.estado_documentacion)}`}>
-                      {vehiculoSeleccionado.estado_documentacion}
+                    <span className={`status-badge ${getEstadoClass(selectedVehiculoVendido.estado_documentacion)}`}>
+                      {selectedVehiculoVendido.estado_documentacion}
                     </span>
                   </div>
                 </div>
@@ -406,15 +441,15 @@ const VehiculosVendidos = () => {
             <div className="form-section">
               <div className="form-section-title">📝 Observaciones</div>
               <div className="detail-group">
-                <div className="detail-value">{vehiculoSeleccionado.observaciones || 'Sin observaciones'}</div>
+                <div className="detail-value">{selectedVehiculoVendido.observaciones || 'Sin observaciones'}</div>
               </div>
             </div>
 
             <div className="documents-section">
               <h3 className="form-section-title">📄 Documentación de Venta</h3>
               <div className="document-cards">
-                {vehiculoSeleccionado.documentos && vehiculoSeleccionado.documentos.length > 0 ? (
-                  vehiculoSeleccionado.documentos.map(doc => (
+                {selectedVehiculoVendido.documentos && selectedVehiculoVendido.documentos.length > 0 ? (
+                  selectedVehiculoVendido.documentos.map(doc => (
                     <div key={doc.id} className="document-card">
                       <div className="document-card-header">
                         <div className="document-card-title">{doc.tipo}</div>
@@ -439,12 +474,12 @@ const VehiculosVendidos = () => {
             </div>
 
             <div className="modal-vehiculo-actions">
-              <button className="btn btn-secondary" onClick={cerrarModal}>
+              <button className="btn btn-secondary" onClick={closeViewModal}>
                 Cerrar
               </button>
               <button className="btn btn-primary" onClick={() => {
-                cerrarModal();
-                setTimeout(() => abrirModalEditar(vehiculoSeleccionado), 300);
+                closeViewModal();
+                setTimeout(() => openEditModal(selectedVehiculoVendido), 300);
               }}>
                 Editar Registro
               </button>
@@ -454,27 +489,27 @@ const VehiculosVendidos = () => {
       )}
 
       {/* Modales existentes */}
-      {modalAbierto === 'nuevo' && (
+      {isCreateModalOpen && (
         <ModalVehiculoVendido
           mode="crear"
-          onClose={cerrarModal}
+          onClose={closeCreateModal}
           onSave={handleCrearVehiculoVendido}
         />
       )}
 
-      {modalAbierto === 'editar' && vehiculoSeleccionado && (
+      {isEditModalOpen && selectedVehiculoVendido && (
         <ModalVehiculoVendido
           mode="editar"
-          vehiculo={vehiculoSeleccionado}
-          onClose={cerrarModal}
+          vehiculo={selectedVehiculoVendido}
+          onClose={closeEditModal}
           onSave={handleActualizarVehiculoVendido}
         />
       )}
 
-      {modalAbierto === 'documentacion' && vehiculoSeleccionado && (
+      {isDocumentacionModalOpen && selectedVehiculoVendido && (
         <ModalDocumentacion
-          vehiculo={vehiculoSeleccionado}
-          onClose={cerrarModal}
+          vehiculo={selectedVehiculoVendido}
+          onClose={closeDocumentacionModal}
           onSave={handleGuardarDocumentacion}
         />
       )}

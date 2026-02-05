@@ -1,5 +1,5 @@
 // src/hooks/usePersonal.js - VERSIÓN SIMPLIFICADA (solo si es necesario)
-import { personalService } from '../services';
+import personalService from '../services/personalService';
 
 export const usePersonal = () => {
   // Si otras partes del código usan este hook, redirigir a usePersonalCRUD

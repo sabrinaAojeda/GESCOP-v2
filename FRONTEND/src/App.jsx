@@ -1,4 +1,4 @@
-// src/App.jsx - VERSIÓN CORREGIDA
+// FRONTEND/src/App.jsx - VERSIÓN CORREGIDA
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -13,13 +13,13 @@ import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Alertas from './pages/Alertas/Alertas';
 import Configuration from './pages/Configuration/Configuration';
-// CORRECCIÓN: Importar desde la ruta correcta
-import ListadoVehiculos from './pages/flota/ListadoVehiculos/ListadoVehiculos';
 import Personal from './pages/Personal/Personal';
+import Search from './pages/Search/Search';
 import ProtectedRoute from './routes/ProtectedRoute';
 
-// Páginas de flota que faltan
-import RodadoMaquinarias from './pages/flota/RodadoMaquinarias/RodadoMaquinarias';
+// Páginas de flota con nuevos nombres
+import FlotaServicio from './pages/flota/FlotaServicio/FlotaServicio';
+import HistorialVehicular from './pages/flota/HistorialVehicular/HistorialVehicular';
 import VehiculosVendidos from './pages/flota/VehiculosVendidos/VehiculosVendidos';
 import EquipamientoVehiculos from './pages/flota/EquipamientoVehiculos/EquipamientoVehiculos';
 
@@ -75,10 +75,10 @@ const App = () => {
                 <Route path="alertas" element={<Alertas />} />
                 <Route path="configuracion" element={<Configuration />} />
                 
-                {/* Rutas de Flota */}
+                {/* Rutas de Flota con nuevos nombres */}
                 <Route path="flota">
-                  <Route path="rodado-maquinarias" element={<RodadoMaquinarias />} />
-                  <Route path="listado-vehiculos" element={<ListadoVehiculos />} />
+                  <Route path="flota-servicio" element={<FlotaServicio />} />
+                  <Route path="historial-vehicular" element={<HistorialVehicular />} />
                   <Route path="vehiculos-vendidos" element={<VehiculosVendidos />} />
                   <Route path="equipamiento-vehiculos" element={<EquipamientoVehiculos />} />
                 </Route>
@@ -88,6 +88,7 @@ const App = () => {
                 <Route path="sedes" element={<Sedes />} />
                 <Route path="proveedores" element={<Proveedores />} />
                 <Route path="reportes" element={<Reportes />} />
+                <Route path="search" element={<Search />} />
               </Route>
               
               {/* Ruta 404 */}

@@ -1,53 +1,37 @@
-// src/services/index.js - VERSIÓN CORREGIDA
+// src/services/index.js - VERSIÓN CORREGIDA CON DEFAULT IMPORTS
 import api from './api';
-import { personalService } from './personalService';
+import personalService from './personalService';
+import dashboardService from './dashboardService';
+import alertasService from './alertasService';
+import vehiculoService from './vehiculoService';
+import proveedoresService from './proveedoresService';
+import sedesService from './sedesService';
+import documentosService from './documentosService';
+import equipamientoService from './equipamientoService';
+import vehiculosVendidosService from './vehiculosVendidosService';
+import configuracionService from './configuracionService';
+import reportesService from './reportesService';
 
-// Importar otros servicios solo si existen
-let alertasService = null;
-let vehiculoService = null;
-let proveedoresService = null;
-
-try {
-  // Intentar importar servicios existentes
-  const alertasModule = await import('./alertasService.js');
-  alertasService = alertasModule.alertasService || alertasModule.default || {};
-} catch (error) {
-  console.warn('⚠️ alertasService.js no encontrado o tiene errores:', error.message);
-  alertasService = {
-    // Servicio mock básico para evitar errores
-    getAlertas: async () => ({ success: false, data: [], message: 'Servicio no disponible' })
-  };
-}
-
-try {
-  const vehiculoModule = await import('./vehiculoService.js');
-  vehiculoService = vehiculoModule.vehiculoService || vehiculoModule.default || {};
-} catch (error) {
-  console.warn('⚠️ vehiculoService.js no encontrado o tiene errores:', error.message);
-  vehiculoService = {};
-}
-
-try {
-  const proveedoresModule = await import('./proveedoresService.js');
-  proveedoresService = proveedoresModule.proveedoresService || proveedoresModule.default || {};
-} catch (error) {
-  console.warn('⚠️ proveedoresService.js no encontrado o tiene errores:', error.message);
-  proveedoresService = {};
-}
-
-// Servicios disponibles para toda la aplicación
+// Exportar todos los servicios
 export {
   api,
   personalService,
+  dashboardService,
   alertasService,
   vehiculoService,
-  proveedoresService
+  proveedoresService,
+  sedesService,
+  documentosService,
+  equipamientoService,
+  vehiculosVendidosService,
+  configuracionService,
+  reportesService
 };
 
 // Servicio para probar conexión API
 export const testAPI = async () => {
   try {
-    const response = await api.get('/api/test.php');
+    const response = await api.get('/test');
     return {
       success: true,
       data: response.data,
@@ -84,9 +68,16 @@ export const testPersonalConnection = async () => {
 export default {
   api,
   personalService,
+  dashboardService,
   alertasService,
   vehiculoService,
   proveedoresService,
+  sedesService,
+  documentosService,
+  equipamientoService,
+  vehiculosVendidosService,
+  configuracionService,
+  reportesService,
   testAPI,
   testPersonalConnection
 };

@@ -1,0 +1,299 @@
+/* FRONTEND/src/pages/flota/HistorialVehicular/HistorialVehicular.css */
+/* Updated to match VehiculosVendidos design style */
+
+.historial-vehicular-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.breadcrumb a {
+  color: #2563eb;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+/* Summary Cards - Matching VehiculosVendidos style */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.summary-card-small {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  text-align: center;
+  border-left: 4px solid #10b981;
+  transition: all 0.3s;
+}
+
+.summary-card-small:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.summary-card-small .number {
+  font-size: 28px;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.summary-card-small .label {
+  color: #6b7280;
+  font-size: 14px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Data Section - Matching VehiculosVendidos style */
+.data-section {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+  overflow-x: auto;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.table-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Buttons - Matching VehiculosVendidos style */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-primary {
+  background: #10b981;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+/* Filter Bar - Matching VehiculosVendidos style */
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.filter-select:first-child {
+  flex: 1;
+  max-width: 300px;
+}
+
+/* Data Table - Matching VehiculosVendidos style */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.data-table th {
+  background: #f9fafb;
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.data-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.data-table th.hidden,
+.data-table td.hidden {
+  display: none;
+}
+
+/* Status Badges - Matching VehiculosVendidos style */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.status-active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-expired {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Action Buttons - Matching VehiculosVendidos style */
+.action-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: all 0.3s;
+  font-size: 14px;
+}
+
+.icon-btn:hover {
+  background: #f3f4f6;
+}
+
+/* Contador - Matching VehiculosVendidos style */
+.contador {
+  text-align: center;
+  margin-top: 15px;
+  color: #6b7280;
+  font-size: 14px;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+/* Loading and Error States */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+}
+
+.error {
+  text-align: center;
+  padding: 40px;
+  color: #dc2626;
+  background: #fef2f2;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .section-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .table-toolbar {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+  }
+  
+  .filter-select:first-child {
+    max-width: none;
+  }
+  
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ASEGURAR QUE LOS BOTONES SIEMPRE SEAN CLICKEABLES */
+.icon-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+.actions-cell {
+  pointer-events: auto !important;
+  z-index: 5 !important;
+}

@@ -1,6 +1,7 @@
-// FRONTEND/src/hooks/useProveedores.js - VERSIÓN ACTUALIZADA
-import { useState, useEffect, useRef } from 'react';
-import { proveedoresService } from '../services';
+// FRONTEND/src/hooks/useProveedores.js - VERSIÓN ESTANDARIZADA (PATRÓN PERSONAL)
+import { useState, useEffect, useRef, useCallback } from 'react';
+import proveedoresService from '../services/proveedoresService';
+import { useModal } from './useModal';
 
 let globalLoadStarted = false;
 
@@ -11,9 +12,14 @@ const HookLogger = {
 };
 
 export const useProveedores = () => {
+  // ===== ESTADOS PRINCIPALES =====
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedProveedor, setSelectedProveedor] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  
+  // Estados de filtros
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
@@ -39,9 +45,61 @@ export const useProveedores = () => {
     estados: ['Todos los estados']
   });
 
+  // ===== MODALES (PATRÓN PERSONAL) =====
+  const createModal = useModal(false);
+  const editModal = useModal(false);
+  const viewModal = useModal(false);
+  const deleteModal = useModal(false);
+  const documentosModal = useModal(false);
+
   const mountedRef = useRef(true);
   const loadAttemptsRef = useRef(0);
   const initialLoadDoneRef = useRef(false);
+
+  // ===== FIELD MAPPING (Frontend → Backend) =====
+  const mapFrontendToBackend = useCallback((data) => {
+    return {
+      razon_social: data.razon_social,
+      cuit: data.cuit,
+      rubro: data.rubro,
+      tipo_proveedor: data.tipo_proveedor,
+      sector_servicio: data.sector_servicio || data.sector,
+      servicio_especifico: data.servicio_especifico || data.servicio,
+      direccion: data.direccion,
+      localidad: data.localidad,
+      provincia: data.provincia,
+      telefono: data.telefono,
+      email: data.email,
+      contacto_nombre: data.contacto_nombre || data.contacto,
+      contacto_cargo: data.contacto_cargo,
+      seguro_RT: data.seguro_RT ? 1 : 0,
+      seguro_vida_personal: data.seguro_vida ? 1 : 0,
+      poliza_RT: data.poliza_RT,
+      vencimiento_poliza_RT: data.vencimiento_poliza_RT,
+      habilitacion_personal: data.habilitacion_personal,
+      vencimiento_habilitacion_personal: data.vencimiento_habilitacion_personal,
+      habilitacion_vehiculo: data.habilitacion_vehiculo,
+      vencimiento_habilitacion_vehiculo: data.vencimiento_habilitacion_vehiculo,
+      frecuencia_renovacion: data.frecuencia_renovacion
+    };
+  }, []);
+
+  // ===== FIELD MAPPING (Backend → Frontend) =====
+  const mapBackendToFrontend = useCallback((data) => {
+    return {
+      ...data,
+      sector_servicio: data.sector_servicio || data.rubro || '',
+      servicio: data.servicio_especifico || data.servicio || '',
+      contacto: data.contacto_nombre || '',
+      seguro_RT: data.seguro_RT ? true : false,
+      seguro_vida: data.seguro_vida_personal ? true : false,
+      personal_contratado: data.personal_contratado || 0,
+      documentos: data.documentos || 0,
+      vencimiento_documentacion: data.proximo_vencimiento || 
+                                 data.vencimiento_documentacion ||
+                                 new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
+    };
+  }, []);
 
   const procesarRespuestaProveedores = (response) => {
     HookLogger.debug('Procesando respuesta del backend', response);
@@ -64,16 +122,17 @@ export const useProveedores = () => {
     }
   };
 
-  const loadProveedores = async (newFilters = {}) => {
+  const loadProveedores = useCallback(async (newFilters = {}) => {
     if (loading) {
       HookLogger.debug('Load bloqueado: ya está cargando');
       return;
     }
 
-    if (loadAttemptsRef.current >= 2) {
-      HookLogger.debug('Load bloqueado: máximo de intentos alcanzado');
-      return;
-    }
+    // CORREGIDO: No bloquear cargas basadas en intentos - reiniciar contador en éxito
+    // if (loadAttemptsRef.current >= 2) {
+    //   HookLogger.debug('Load bloqueado: máximo de intentos alcanzado');
+    //   return;
+    // }
 
     loadAttemptsRef.current++;
     HookLogger.debug(`Intento de carga #${loadAttemptsRef.current}`);
@@ -85,7 +144,6 @@ export const useProveedores = () => {
       const updatedFilters = { 
         ...filters, 
         ...newFilters,
-        // Incluir filtro de seguro RT
         tiene_seguro_RT: newFilters.tiene_seguro_RT || ''
       };
       
@@ -97,22 +155,7 @@ export const useProveedores = () => {
         const { data, pagination: paginationData, filterOptions: options } = procesarRespuestaProveedores(response);
         
         // Procesar datos para el frontend
-        const proveedoresProcesados = data.map(prov => ({
-          ...prov,
-          // Asegurar campos nuevos
-          sector_servicio: prov.sector_servicio || prov.rubro || '',
-          servicio: prov.servicio || '',
-          localidad: prov.localidad || '',
-          seguro_RT: prov.seguro_RT !== undefined ? prov.seguro_RT : false,
-          seguro_vida: prov.seguro_vida || false,
-          habilitacion_personal: prov.habilitacion_personal || '',
-          habilitacion_vehiculo: prov.habilitacion_vehiculo || '',
-          personal_contratado: prov.personal_contratado || 0,
-          documentos: prov.documentos || 0,
-          vencimiento_documentacion: prov.vencimiento_documentacion || 
-                                     prov.proximo_vencimiento || 
-                                     new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
-        }));
+        const proveedoresProcesados = data.map(mapBackendToFrontend);
         
         setProveedores(proveedoresProcesados);
         setPagination(paginationData || pagination);
@@ -128,6 +171,7 @@ export const useProveedores = () => {
         }
         
         HookLogger.info(`Proveedores cargados: ${proveedoresProcesados.length} registros`);
+        loadAttemptsRef.current = 0; // CORREGIDO: Reiniciar contador en éxito
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -139,54 +183,24 @@ export const useProveedores = () => {
           url: err.config?.url
         });
         
-        // Datos de ejemplo para desarrollo
-        if (import.meta.env.DEV) {
-          const mockData = [
-            {
-              id: 'PROV-001',
-              codigo: 'PROV-001',
-              razon_social: 'Seguridad Total S.A.',
-              cuit: '30-12345678-9',
-              rubro: 'Servicios de Vigilancia',
-              sector_servicio: 'Seguridad',
-              servicio: 'Vigilancia de Plantas',
-              direccion: 'Av. Siempre Viva 123',
-              localidad: 'Capital Federal',
-              provincia: 'Buenos Aires',
-              telefono: '011-4789-1234',
-              email: 'contacto@seguridadtotal.com',
-              contacto_nombre: 'Carlos Rodríguez',
-              contacto_cargo: 'Gerente Comercial',
-              estado: 'Activo',
-              seguro_RT: true,
-              seguro_vida: true,
-              habilitacion_personal: 'Vigente hasta 2024-12-31',
-              habilitacion_vehiculo: 'Vigente hasta 2024-11-30',
-              personal_contratado: 15,
-              documentos: 8,
-              vencimiento_documentacion: '2024-06-15'
-            }
-          ];
-          
-          setProveedores(mockData);
-          setPagination({
-            current_page: 1,
-            per_page: 10,
-            total: mockData.length,
-            total_pages: 1
-          });
-          setError(null);
-        }
+        setProveedores([]);
+        setPagination({
+          current_page: 1,
+          per_page: 10,
+          total: 0,
+          total_pages: 0
+        });
+        // CORREGIDO: No sobrescribir error con null
       }
     } finally {
       if (mountedRef.current) {
         setLoading(false);
       }
     }
-  };
+  }, [filters, pagination, filterOptions, mapBackendToFrontend]);
 
-  // Crear proveedor con campos extendidos
-  const createProveedor = async (proveedorData) => {
+  // Crear proveedor con field mapping
+  const createProveedor = useCallback(async (proveedorData) => {
     if (loading) return { success: false, error: 'Ya hay una operación en curso' };
     
     setLoading(true);
@@ -195,23 +209,19 @@ export const useProveedores = () => {
     try {
       HookLogger.info('Creando proveedor:', proveedorData);
       
-      // Preparar datos para el backend
-      const datosParaEnviar = {
+      // Mapear campos frontend → backend
+      const datosParaEnviar = mapFrontendToBackend({
         ...proveedorData,
-        // Asegurar campos booleanos
-        seguro_RT: Boolean(proveedorData.seguro_RT),
-        seguro_vida: Boolean(proveedorData.seguro_vida),
         // Generar código si no existe
         codigo: proveedorData.codigo || `PROV-${Date.now().toString().slice(-6)}`
-      };
+      });
       
       const resultado = await proveedoresService.createProveedor(datosParaEnviar);
       
       if (resultado.success) {
-        if (loadAttemptsRef.current < 3) {
-          await loadProveedores();
-        }
         HookLogger.info('Proveedor creado exitosamente');
+        createModal.closeModal();
+        await loadProveedores();
         return { success: true, id: resultado.id };
       } else {
         const errorMsg = resultado.message || 'Error al crear el proveedor';
@@ -230,10 +240,10 @@ export const useProveedores = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loading, createModal, loadProveedores, mapFrontendToBackend]);
 
-  // Actualizar proveedor
-  const updateProveedor = async (id, proveedorData) => {
+  // Actualizar proveedor con field mapping
+  const updateProveedor = useCallback(async (id, proveedorData) => {
     if (loading) return { success: false, error: 'Ya hay una operación en curso' };
     
     setLoading(true);
@@ -242,20 +252,15 @@ export const useProveedores = () => {
     try {
       HookLogger.info(`Actualizando proveedor ID: ${id}`, proveedorData);
       
-      const datosParaEnviar = {
-        id,
-        ...proveedorData,
-        seguro_RT: Boolean(proveedorData.seguro_RT),
-        seguro_vida: Boolean(proveedorData.seguro_vida)
-      };
+      // Mapear campos frontend → backend
+      const datosParaEnviar = mapFrontendToBackend(proveedorData);
       
       const resultado = await proveedoresService.updateProveedor(id, datosParaEnviar);
       
       if (resultado.success) {
-        if (loadAttemptsRef.current < 3) {
-          await loadProveedores();
-        }
         HookLogger.info('Proveedor actualizado exitosamente');
+        editModal.closeModal();
+        await loadProveedores();
         return { success: true };
       } else {
         const errorMsg = resultado.message || 'Error al actualizar el proveedor';
@@ -275,10 +280,10 @@ export const useProveedores = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loading, editModal, loadProveedores, mapFrontendToBackend]);
 
   // Eliminar proveedor
-  const deleteProveedor = async (id) => {
+  const deleteProveedor = useCallback(async (id) => {
     if (loading) return { success: false, error: 'Ya hay una operación en curso' };
     
     setLoading(true);
@@ -289,10 +294,9 @@ export const useProveedores = () => {
       const resultado = await proveedoresService.deleteProveedor(id);
       
       if (resultado.success) {
-        if (loadAttemptsRef.current < 3) {
-          await loadProveedores();
-        }
         HookLogger.info('Proveedor eliminado exitosamente');
+        deleteModal.closeModal();
+        await loadProveedores();
         return { success: true };
       } else {
         const errorMsg = resultado.message || 'Error al eliminar el proveedor';
@@ -312,46 +316,86 @@ export const useProveedores = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loading, deleteModal, loadProveedores]);
+
+  // Cargar documentos de proveedor
+  const loadDocuments = useCallback(async (proveedorId) => {
+    try {
+      const resultado = await proveedoresService.getDocumentosProveedor(proveedorId);
+      if (resultado.success) {
+        setDocuments(resultado.data || []);
+      }
+    } catch (err) {
+      HookLogger.error('Error cargando documentos:', err);
+      setDocuments([]);
+    }
+  }, []);
+
+  // ===== FUNCIONES PARA ABRIR CERRAR MODALES (PATRÓN PERSONAL) =====
+  const openCreateModal = useCallback(() => {
+    setSelectedProveedor(null);
+    createModal.openModal();
+  }, [createModal]);
+
+  const openEditModal = useCallback((proveedor) => {
+    setSelectedProveedor(proveedor);
+    editModal.openModal();
+  }, [editModal]);
+
+  const openViewModal = useCallback((proveedor) => {
+    setSelectedProveedor(proveedor);
+    viewModal.openModal();
+  }, [viewModal]);
+
+  const openDeleteModal = useCallback((proveedor) => {
+    setSelectedProveedor(proveedor);
+    deleteModal.openModal();
+  }, [deleteModal]);
+
+  const openDocumentosModal = useCallback(async (proveedor) => {
+    setSelectedProveedor(proveedor);
+    documentosModal.openModal();
+    await loadDocuments(proveedor.id);
+  }, [documentosModal, loadDocuments]);
 
   // Filtros específicos
-  const handleSearch = (searchTerm) => {
+  const handleSearch = useCallback((searchTerm) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ search: searchTerm, page: 1 });
     }
-  };
+  }, [loading, loadProveedores]);
 
-  const handleRubroFilter = (rubro) => {
+  const handleRubroFilter = useCallback((rubro) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ rubro, page: 1 });
     }
-  };
+  }, [loading, loadProveedores]);
 
-  const handleSectorServicioFilter = (sector) => {
+  const handleSectorServicioFilter = useCallback((sector) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ sector_servicio: sector, page: 1 });
     }
-  };
+  }, [loading, loadProveedores]);
 
-  const handleEstadoFilter = (estado) => {
+  const handleEstadoFilter = useCallback((estado) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ estado, page: 1 });
     }
-  };
+  }, [loading, loadProveedores]);
 
-  const handleLocalidadFilter = (localidad) => {
+  const handleLocalidadFilter = useCallback((localidad) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ localidad, page: 1 });
     }
-  };
+  }, [loading, loadProveedores]);
 
-  const handleSeguroRTFilter = (tieneSeguro) => {
+  const handleSeguroRTFilter = useCallback((tieneSeguro) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ tiene_seguro_RT: tieneSeguro, page: 1 });
     }
-  };
+  }, [loading, loadProveedores]);
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ 
         page: 1, 
@@ -363,16 +407,16 @@ export const useProveedores = () => {
         tiene_seguro_RT: ''
       });
     }
-  };
+  }, [loading, loadProveedores]);
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = useCallback((newPage) => {
     if (!loading && loadAttemptsRef.current < 3) {
       loadProveedores({ page: newPage });
     }
-  };
+  }, [loading, loadProveedores]);
 
   // Exportar con campos extendidos
-  const exportToCSV = () => {
+  const exportToCSV = useCallback(() => {
     if (!proveedores.length) return;
     
     const headers = [
@@ -448,51 +492,52 @@ export const useProveedores = () => {
     document.body.removeChild(link);
     
     HookLogger.info('CSV exportado exitosamente');
-  };
+  }, [proveedores]);
 
-  // Carga inicial
+  // Carga inicial - SOLO UNA VEZ
   useEffect(() => {
     mountedRef.current = true;
     loadAttemptsRef.current = 0;
-
-    if (globalLoadStarted || initialLoadDoneRef.current) {
-      HookLogger.debug('Carga inicial bloqueada: ya se ejecutó globalmente');
-      return;
-    }
-
-    globalLoadStarted = true;
     initialLoadDoneRef.current = true;
-
+    
     HookLogger.info('INICIANDO CARGA INICIAL ÚNICA DE PROVEEDORES');
-
-    const timer = setTimeout(() => {
-      if (mountedRef.current) {
-        loadProveedores();
+    
+    // Cargar inmediatamente sin timer
+    const executeLoad = async () => {
+      try {
+        await loadProveedores();
+      } catch (err) {
+        HookLogger.error('Error en carga inicial:', err);
       }
-    }, 200);
-
+    };
+    
+    executeLoad();
+    
     return () => {
       mountedRef.current = false;
-      clearTimeout(timer);
-      
-      setTimeout(() => {
-        globalLoadStarted = false;
-        HookLogger.debug('Protección global reseteada para proveedores');
-      }, 3000);
     };
-  }, []);
+  }, []); // DEPENDENCY ARRAY VACÍO = solo se ejecuta una vez al montar
 
   return {
+    // Estados principales
     proveedores,
     loading,
     error,
+    selectedProveedor,
+    documents,
+    
+    // Filtros y paginación
     filters,
     pagination,
     filterOptions,
+    
+    // Funciones CRUD
     loadProveedores,
     createProveedor,
     updateProveedor,
     deleteProveedor,
+    
+    // Funciones de filtros
     handlePageChange,
     handleSearch,
     handleRubroFilter,
@@ -501,6 +546,32 @@ export const useProveedores = () => {
     handleLocalidadFilter,
     handleSeguroRTFilter,
     resetFilters,
-    exportToCSV
+    
+    // Exportar
+    exportToCSV,
+    
+    // Estados de modales
+    isCreateModalOpen: createModal.isOpen,
+    isEditModalOpen: editModal.isOpen,
+    isViewModalOpen: viewModal.isOpen,
+    isDeleteModalOpen: deleteModal.isOpen,
+    isDocumentosModalOpen: documentosModal.isOpen,
+    
+    // Funciones para abrir modales
+    openCreateModal,
+    openEditModal,
+    openViewModal,
+    openDeleteModal,
+    openDocumentosModal,
+    
+    // Funciones para cerrar modales
+    closeCreateModal: createModal.closeModal,
+    closeEditModal: editModal.closeModal,
+    closeViewModal: viewModal.closeModal,
+    closeDeleteModal: deleteModal.closeModal,
+    closeDocumentosModal: documentosModal.closeModal,
+    
+    // Documentos
+    loadDocuments
   };
 };

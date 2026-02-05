@@ -626,6 +626,7 @@ const ModalVehiculo = ({ mode = "crear", vehiculo, onClose, onSave }) => {
                   placeholder="Ej: 12345678"
                   inputMode="numeric"
                   pattern="[0-9\s-]*"
+                  title="Solo números, espacios y guiones"
                 />
                 <p className="form-help">
                   Ingrese solo números (se aceptan espacios y guiones)

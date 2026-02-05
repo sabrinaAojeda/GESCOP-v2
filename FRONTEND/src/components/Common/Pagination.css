@@ -1,0 +1,124 @@
+/* src/components/Common/Pagination.css */
+.pagination-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 1rem;
+  gap: 1rem;
+}
+
+.pagination-container.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-number.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.pagination-number.active:hover {
+  background: #2563eb;
+}
+
+.pagination-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.pagination-prev,
+.pagination-next {
+  font-size: 0.75rem;
+}
+
+.pagination-per-page {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-per-page label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.pagination-per-page select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.pagination-per-page select:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pagination-container {
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .pagination-per-page {
+    width: 100%;
+    justify-content: center;
+  }
+}

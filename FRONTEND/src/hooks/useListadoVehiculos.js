@@ -1,6 +1,6 @@
 // src/hooks/useListadoVehiculos.js - VERSIÓN CORREGIDA
 import { useState, useEffect, useRef } from 'react';
-import { vehiculoService } from '../services/vehiculoService';
+import vehiculoService from '../services/vehiculoService';
 
 // Logger específico para hooks
 const HookLogger = {
@@ -97,13 +97,8 @@ export const useListadoVehiculos = () => {
         
         setError(`Error ${err.response?.status}: ${errorMsg}`);
         
-        // Fallback a datos mock solo en desarrollo
-        if (process.env.NODE_ENV === 'development') {
-          HookLogger.info(HOOK_NAME, 'Usando datos mock como fallback');
-          setVehiculos(getMockVehiculos());
-        } else {
-          setVehiculos([]);
-        }
+        // NO usar datos mock - retornar array vacío en producción
+        setVehiculos([]);
       }
     } finally {
       if (mountedRef.current) {
@@ -304,24 +299,3 @@ export const useListadoVehiculos = () => {
     loadVehiculos
   };
 };
-
-// Datos mock como fallback
-const getMockVehiculos = () => [
-  {
-    interno: "001",
-    año: 2023,
-    dominio: "AB-123-CD",
-    modelo: "Toyota Hilux SRV",
-    eq_incorporado: "GPS, Radio",
-    sector: "Logística",
-    chofer: "Juan Pérez",
-    estado: "Activo",
-    observaciones: "Nuevo ingreso",
-    vtv_vencimiento: "2024-06-15",
-    vtv_estado: "Vigente",
-    hab_vencimiento: "2024-12-20",
-    hab_estado: "Vigente",
-    seguro_vencimiento: "2024-05-30",
-    tipo: "Rodado"
-  }
-];

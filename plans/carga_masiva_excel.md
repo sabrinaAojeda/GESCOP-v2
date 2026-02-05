@@ -1,0 +1,1 @@
+[{"width": 120, "height": 120, "background-color": 2563, "color": "white;\n  border: 2px solid #1d4ed8;\n  border-radius: 0;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  text-align: center;\n  font-weight: 600;\n  font-size: 14px;\n  cursor: pointer;\n  transition: all 0.2s ease;"}, {"background-color": 1, "border-color": 1e+40}]

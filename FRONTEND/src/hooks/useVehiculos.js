@@ -1,191 +1,136 @@
-// src/hooks/useVehiculos.js - VERSIÓN DEFINITIVA
+// FRONTEND/src/hooks/useVehiculos.js - VERSIÓN ESTANDARIZADA (PATRÓN PERSONAL)
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { vehiculoService } from '../services/vehiculoService';
+import vehiculoService from '../services/vehiculoService';
+import { useModal } from './useModal';
 
-// 🎯 DATOS MOCK COMO FALLBACK
-const getMockVehiculos = () => [
-  {
-    interno: "001",
-    año: 2023,
-    dominio: "AB-123-CD",
-    modelo: "Toyota Hilux SRV",
-    eq_incorporado: "GPS, Radio",
-    sector: "Logística",
-    chofer: "Juan Pérez",
-    estado: "Activo",
-    observaciones: "Nuevo ingreso",
-    vtv_vencimiento: "2024-06-15",
-    vtv_estado: "Vigente",
-    hab_vencimiento: "2024-12-20",
-    hab_estado: "Vigente",
-    seguro_vencimiento: "2024-05-30",
-    tipo: "Rodado"
+// Logger del hook
+const HookLogger = {
+  info: (message, data = null) => {
+    console.info(`🎯 [useVehiculos] ${message}`, data || '');
   },
-  {
-    interno: "002",
-    año: 2022,
-    dominio: "EF-456-GH",
-    modelo: "Ford Ranger",
-    eq_incorporado: "Winche",
-    sector: "Obras",
-    chofer: "Carlos Gómez",
-    estado: "Mantenimiento",
-    observaciones: "Cambio de aceite pendiente",
-    vtv_vencimiento: "2024-03-10",
-    vtv_estado: "Vencido",
-    hab_vencimiento: "2024-08-15",
-    hab_estado: "Vigente",
-    seguro_vencimiento: "2024-07-20",
-    tipo: "Rodado"
+  error: (message, data = null) => {
+    console.error(`💥 [useVehiculos] ${message}`, data || '');
+  },
+  debug: (message, data = null) => {
+    console.log(`🔍 [useVehiculos] ${message}`, data || '');
   }
-];
+};
 
 export const useVehiculos = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedVehiculo, setSelectedVehiculo] = useState(null);
   const [filters, setFilters] = useState({
     page: 1,
-    limit: 10,
+    limit: 50,
     search: '',
     sector: '',
     estado: '',
     tipo: ''
   });
   const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
+    current_page: 1,
+    per_page: 50,
     total: 0,
-    totalPages: 0
+    total_pages: 0
   });
 
-  const mountedRef = useRef(true);
+  // ===== MODALES (PATRÓN PERSONAL) =====
+  const createModal = useModal(false);
+  const editModal = useModal(false);
+  const viewModal = useModal(false);
+  const deleteModal = useModal(false);
+  const documentacionModal = useModal(false);
 
-  // 🎯 FUNCIÓN PARA PROCESAR RESPUESTA DEL BACKEND
-  const procesarRespuestaVehiculos = useCallback((response) => {
-    console.log('🔍 Procesando respuesta del backend:', response);
-    
-    // 🎯 FORMATO 1: { success: true, data: { vehiculos: [], pagination: {} } }
-    if (response.success && response.data) {
-      return {
-        vehiculos: response.data.vehiculos || [],
-        pagination: response.data.pagination || {
-          page: filters.page,
-          limit: filters.limit,
-          total: response.data.vehiculos?.length || 0,
-          totalPages: Math.ceil((response.data.vehiculos?.length || 0) / filters.limit)
-        }
-      };
-    }
-    
-    // 🎯 FORMATO 2: { vehiculos: [], pagination: {} }
-    if (response.vehiculos && Array.isArray(response.vehiculos)) {
-      return {
-        vehiculos: response.vehiculos,
-        pagination: response.pagination || {
-          page: filters.page,
-          limit: filters.limit,
-          total: response.vehiculos.length,
-          totalPages: Math.ceil(response.vehiculos.length / filters.limit)
-        }
-      };
-    }
-    
-    // 🎯 FORMATO 3: Array directo
-    if (Array.isArray(response)) {
-      return {
-        vehiculos: response,
-        pagination: {
-          page: 1,
-          limit: response.length,
-          total: response.length,
-          totalPages: 1
-        }
-      };
-    }
-    
-    // 🎯 FORMATO 4: Respuesta inesperada
-    console.warn('⚠️ Formato de respuesta inesperado, usando fallback:', response);
-    return {
-      vehiculos: [],
-      pagination: {
-        page: filters.page,
-        limit: filters.limit,
-        total: 0,
-        totalPages: 0
-      }
-    };
-  }, [filters.page, filters.limit]);
+  const mountedRef = useRef(true); // CORREGIDO: Inicializar en true para permitir carga
 
-  // 🎯 CARGAR VEHÍCULOS DESDE EL BACKEND
+  // 🎯 FUNCIÓN PARA CARGAR VEHÍCULOS DEL BACKEND
   const loadVehiculos = useCallback(async (newFilters = {}) => {
-    if (loading || !mountedRef.current) return;
+    if (!mountedRef.current) return;
 
     setLoading(true);
     setError(null);
     
     try {
-      const updatedFilters = { ...filters, ...newFilters, page: newFilters.page || filters.page };
-      console.log('📤 Cargando vehículos con filtros:', updatedFilters);
+      const updatedFilters = { ...filters, ...newFilters };
+      HookLogger.info('Iniciando carga de vehículos', updatedFilters);
       
       const response = await vehiculoService.getVehiculos(updatedFilters);
       
       if (mountedRef.current) {
-        const { vehiculos: vehiculosAdaptados, pagination: paginationData } = procesarRespuestaVehiculos(response);
-        
-        console.log('✅ Vehículos cargados exitosamente:', vehiculosAdaptados.length);
-        setVehiculos(vehiculosAdaptados);
-        setPagination(paginationData);
-        setFilters(updatedFilters);
+        if (response.success && response.data) {
+          const vehiculosData = response.data.vehiculos || [];
+          const paginationData = response.data.pagination || {
+            current_page: updatedFilters.page,
+            per_page: updatedFilters.limit,
+            total: vehiculosData.length,
+            total_pages: Math.ceil(vehiculosData.length / updatedFilters.limit)
+          };
+          
+          HookLogger.info(`✅ Carga completada: ${vehiculosData.length} vehículos`);
+          
+          setVehiculos(vehiculosData);
+          setPagination(paginationData);
+          setFilters(updatedFilters);
+        } else {
+          throw new Error(response.message || 'Error en la respuesta del servidor');
+        }
       }
     } catch (err) {
       if (mountedRef.current) {
-        const errorMsg = err.response?.data?.message || err.message || 'Error al cargar los vehículos';
-        setError(errorMsg);
-        console.error('❌ Error loading vehiculos:', err);
+        const errorMsg = err.message || 'Error al cargar los vehículos';
+        HookLogger.error('Error en carga', {
+          error: err.message,
+          userMessage: errorMsg
+        });
         
-        // 🎯 FALLBACK A DATOS MOCK SOLO EN DESARROLLO
-        if (import.meta.env.DEV) {
-          console.log('🔄 Usando datos mock como fallback');
-          const mockData = getMockVehiculos();
-          setVehiculos(mockData);
-          setPagination({
-            page: 1,
-            limit: 10,
-            total: mockData.length,
-            totalPages: 1
-          });
-        } else {
-          setVehiculos([]);
-          setPagination({
-            page: 1,
-            limit: 10,
-            total: 0,
-            totalPages: 0
-          });
-        }
+        setError(errorMsg);
+        setVehiculos([]);
+        setPagination({
+          current_page: 1,
+          per_page: 50,
+          total: 0,
+          total_pages: 0
+        });
       }
     } finally {
       if (mountedRef.current) {
         setLoading(false);
       }
     }
-  }, [filters, loading, procesarRespuestaVehiculos]);
+  }, [filters]);
 
   // 🎯 CREAR VEHÍCULO
   const createVehiculo = async (vehiculoData) => {
-    if (loading) return { success: false, error: 'Ya hay una operación en curso' };
+    if (loading) {
+      return { success: false, error: 'Ya hay una operación en curso' };
+    }
     
     setLoading(true);
     setError(null);
     
     try {
-      await vehiculoService.createVehiculo(vehiculoData);
-      // 🎯 RECARGAR DESPUÉS DE CREAR
-      await loadVehiculos({ page: 1 });
-      return { success: true };
+      HookLogger.info('Creando vehículo', { interno: vehiculoData.interno });
+      const resultado = await vehiculoService.createVehiculo(vehiculoData);
+      
+      if (resultado.success) {
+        await loadVehiculos({ page: 1 });
+        HookLogger.info('✅ Vehículo creado exitosamente');
+        createModal.closeModal();
+        return { success: true, message: resultado.message };
+      } else {
+        const errorMsg = resultado.message || 'Error al crear el vehículo';
+        setError(errorMsg);
+        return { success: false, error: errorMsg };
+      }
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Error al crear el vehículo';
+      HookLogger.error('Error al crear vehículo', {
+        interno: vehiculoData.interno,
+        error: err.message
+      });
+      
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
@@ -195,18 +140,34 @@ export const useVehiculos = () => {
 
   // 🎯 ACTUALIZAR VEHÍCULO
   const updateVehiculo = async (interno, vehiculoData) => {
-    if (loading) return { success: false, error: 'Ya hay una operación en curso' };
+    if (loading) {
+      return { success: false, error: 'Ya hay una operación en curso' };
+    }
     
     setLoading(true);
     setError(null);
     
     try {
-      await vehiculoService.updateVehiculo(interno, vehiculoData);
-      // 🎯 RECARGAR DESPUÉS DE ACTUALIZAR
-      await loadVehiculos({ page: filters.page });
-      return { success: true };
+      HookLogger.info('Actualizando vehículo', { interno });
+      const resultado = await vehiculoService.updateVehiculo(interno, vehiculoData);
+      
+      if (resultado.success) {
+        await loadVehiculos({ page: filters.page });
+        HookLogger.info('✅ Vehículo actualizado exitosamente');
+        editModal.closeModal();
+        return { success: true, message: resultado.message };
+      } else {
+        const errorMsg = resultado.message || 'Error al actualizar el vehículo';
+        setError(errorMsg);
+        return { success: false, error: errorMsg };
+      }
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Error al actualizar el vehículo';
+      HookLogger.error('Error al actualizar vehículo', {
+        interno,
+        error: err.message
+      });
+      
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
@@ -216,18 +177,34 @@ export const useVehiculos = () => {
 
   // 🎯 ELIMINAR VEHÍCULO
   const deleteVehiculo = async (interno) => {
-    if (loading) return { success: false, error: 'Ya hay una operación en curso' };
+    if (loading) {
+      return { success: false, error: 'Ya hay una operación en curso' };
+    }
     
     setLoading(true);
     setError(null);
     
     try {
-      await vehiculoService.deleteVehiculo(interno);
-      // 🎯 RECARGAR DESPUÉS DE ELIMINAR
-      await loadVehiculos({ page: filters.page });
-      return { success: true };
+      HookLogger.info('Eliminando vehículo', { interno });
+      const resultado = await vehiculoService.deleteVehiculo(interno);
+      
+      if (resultado.success) {
+        await loadVehiculos({ page: filters.page });
+        HookLogger.info('✅ Vehículo eliminado exitosamente');
+        deleteModal.closeModal();
+        return { success: true, message: resultado.message };
+      } else {
+        const errorMsg = resultado.message || 'Error al eliminar el vehículo';
+        setError(errorMsg);
+        return { success: false, error: errorMsg };
+      }
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Error al eliminar el vehículo';
+      HookLogger.error('Error al eliminar vehículo', {
+        interno,
+        error: err.message
+      });
+      
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
@@ -236,12 +213,6 @@ export const useVehiculos = () => {
   };
 
   // 🎯 MANEJADORES DE FILTROS
-  const handlePageChange = (newPage) => {
-    if (!loading && mountedRef.current) {
-      loadVehiculos({ page: newPage });
-    }
-  };
-
   const handleSearch = (searchTerm) => {
     if (!loading && mountedRef.current) {
       loadVehiculos({ search: searchTerm, page: 1 });
@@ -266,66 +237,94 @@ export const useVehiculos = () => {
     }
   };
 
-  // 🎯 RESETEAR FILTROS
-  const resetFilters = () => {
+  const handlePageChange = (newPage) => {
     if (!loading && mountedRef.current) {
-      const defaultFilters = {
-        page: 1,
-        limit: 10,
-        search: '',
-        sector: '',
-        estado: '',
-        tipo: ''
-      };
-      loadVehiculos(defaultFilters);
+      loadVehiculos({ page: newPage });
     }
   };
 
-  // 🎯 CARGA INICIAL
-  useEffect(() => {
-    mountedRef.current = true;
-    loadVehiculos();
+  const resetFilters = () => {
+    if (!loading && mountedRef.current) {
+      loadVehiculos({ page: 1, limit: 50, search: '', sector: '', estado: '', tipo: '' });
+    }
+  };
 
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  // ===== FUNCIONES PARA ABRIR CERRAR MODALES (PATRÓN PERSONAL) =====
+  const openCreateModal = useCallback(() => {
+    setSelectedVehiculo(null);
+    createModal.openModal();
+  }, [createModal]);
+
+  const openEditModal = useCallback((vehiculo) => {
+    setSelectedVehiculo(vehiculo);
+    editModal.openModal();
+  }, [editModal]);
+
+  const openViewModal = useCallback((vehiculo) => {
+    setSelectedVehiculo(vehiculo);
+    viewModal.openModal();
+  }, [viewModal]);
+
+  const openDeleteModal = useCallback((vehiculo) => {
+    setSelectedVehiculo(vehiculo);
+    deleteModal.openModal();
+  }, [deleteModal]);
+
+  const openDocumentacionModal = useCallback((vehiculo) => {
+    setSelectedVehiculo(vehiculo);
+    documentacionModal.openModal();
+  }, [documentacionModal]);
 
   // 🎯 RETORNO DEL HOOK
   return {
-    // Datos
     vehiculos: Array.isArray(vehiculos) ? vehiculos : [],
     loading,
     error,
+    selectedVehiculo,
     filters,
     pagination,
-    
-    // Acciones de CRUD
-    loadVehiculos,
     createVehiculo,
     updateVehiculo,
     deleteVehiculo,
-    
-    // Manejo de paginación
-    handlePageChange,
-    
-    // Manejo de filtros
+    loadVehiculos,
     handleSearch,
     handleSectorFilter,
     handleEstadoFilter,
     handleTipoFilter,
+    handlePageChange,
     resetFilters,
-    
-    // Utilitarios
     setFilters: (newFilters) => {
       if (!loading && mountedRef.current) {
         setFilters(prev => ({ ...prev, ...newFilters }));
       }
     },
-    
-    // Estado
     hasVehiculos: Array.isArray(vehiculos) && vehiculos.length > 0,
-    isFiltered: filters.search || filters.sector || filters.estado || filters.tipo
+    isFiltered: filters.search || filters.sector || filters.estado || filters.tipo,
+    stats: {
+      total: vehiculos.length,
+      activos: vehiculos.filter(v => v.estado === 'Activo').length,
+      rodados: vehiculos.filter(v => v.tipo === 'Rodado').length,
+      maquinarias: vehiculos.filter(v => v.tipo === 'Maquinaria').length,
+      mantenimiento: vehiculos.filter(v => v.estado === 'Mantenimiento').length
+    },
+    // Estados de modales
+    isCreateModalOpen: createModal.isOpen,
+    isEditModalOpen: editModal.isOpen,
+    isViewModalOpen: viewModal.isOpen,
+    isDeleteModalOpen: deleteModal.isOpen,
+    isDocumentacionModalOpen: documentacionModal.isOpen,
+    // Funciones para abrir modales
+    openCreateModal,
+    openEditModal,
+    openViewModal,
+    openDeleteModal,
+    openDocumentacionModal,
+    // Funciones para cerrar modales
+    closeCreateModal: createModal.closeModal,
+    closeEditModal: editModal.closeModal,
+    closeViewModal: viewModal.closeModal,
+    closeDeleteModal: deleteModal.closeModal,
+    closeDocumentacionModal: documentacionModal.closeModal
   };
 };
 

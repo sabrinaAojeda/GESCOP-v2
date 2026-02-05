@@ -1,146 +1,272 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import * as XLSX from 'xlsx'
+import { useProveedores } from '../../hooks/useProveedores'
 import GenericModal from '../../components/Common/GenericModal'
 import ProveedorForm from '../../components/DataTable/forms/ProveedorForm'
+import proveedoresService from '../../services/proveedoresService'
+import ColumnSelectorProveedores from '../../components/Common/ColumnSelectorProveedores'
+import CargaMasiva from '../../components/Common/CargaMasiva'
+import '@assets/css/buttons.css'
 import './Proveedores.css'
 
 const Proveedores = () => {
+  const {
+    proveedores,
+    loading,
+    error,
+    filters,
+    pagination,
+    filterOptions,
+    loadProveedores,
+    createProveedor,
+    updateProveedor,
+    deleteProveedor,
+    handleSearch,
+    handleRubroFilter,
+    handleEstadoFilter,
+    handleLocalidadFilter,
+    resetFilters,
+    selectedProveedor,
+    isCreateModalOpen,
+    isEditModalOpen,
+    isViewModalOpen,
+    isDeleteModalOpen,
+    isDocumentosModalOpen,
+    openCreateModal,
+    openEditModal,
+    openViewModal,
+    openDeleteModal,
+    openDocumentosModal,
+    closeCreateModal,
+    closeEditModal,
+    closeViewModal,
+    closeDeleteModal,
+    closeDocumentosModal
+  } = useProveedores()
+  
   const [filtroRubro, setFiltroRubro] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroLocalidad, setFiltroLocalidad] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalType, setModalType] = useState('crear')
-  const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null)
-
-  const proveedores = [
-    {
-      id: 'PROV-001',
-      codigo: 'PROV-001',
-      razon_social: 'Seguridad Total S.A.',
-      cuit: '30-12345678-9',
-      rubro: 'Servicios de Vigilancia',
-      sector_servicio: 'Seguridad',
-      servicio: 'Vigilancia de Plantas',
-      direccion: 'Av. Siempre Viva 123',
-      localidad: 'Capital Federal',
-      provincia: 'Buenos Aires',
-      telefono: '011-4789-1234',
-      email: 'contacto@seguridadtotal.com',
-      contacto_nombre: 'Carlos Rodríguez',
-      contacto_cargo: 'Gerente Comercial',
-      estado: 'Activo',
-      seguro_RT: true,
-      seguro_vida: true,
-      habilitacion_personal: 'Vigente hasta 2024-12-31',
-      habilitacion_vehiculo: 'Vigente hasta 2024-11-30',
-      personal_contratado: 15,
-      documentos: 8,
-      vencimiento_documentacion: '2024-06-15'
-    },
-    {
-      id: 'PROV-002',
-      codigo: 'PROV-002',
-      razon_social: 'Transportes Rápidos SRL',
-      cuit: '30-98765432-1',
-      rubro: 'Transporte',
-      sector_servicio: 'Logística',
-      servicio: 'Transporte Especializado',
-      direccion: 'Ruta 8 Km 45',
-      localidad: 'Pilar',
-      provincia: 'Buenos Aires',
-      telefono: '0230-456-789',
-      email: 'info@transportesrapidos.com',
-      contacto_nombre: 'Ana López',
-      contacto_cargo: 'Directora de Operaciones',
-      estado: 'Activo',
-      seguro_RT: true,
-      seguro_vida: true,
-      habilitacion_personal: 'Vigente hasta 2024-10-31',
-      habilitacion_vehiculo: 'Vigente hasta 2024-09-30',
-      personal_contratado: 8,
-      documentos: 12,
-      vencimiento_documentacion: '2024-05-20'
-    },
-    {
-      id: 'PROV-003',
-      codigo: 'PROV-003',
-      razon_social: 'Mantenimiento Industrial S.A.',
-      cuit: '30-45678912-3',
-      rubro: 'Mantenimiento',
-      sector_servicio: 'Mantenimiento',
-      servicio: 'Mantenimiento de Maquinaria',
-      direccion: 'Calle Industrial 789',
-      localidad: 'Rosario',
-      provincia: 'Santa Fe',
-      telefono: '0341-789-456',
-      email: 'servicio@mantenimientoindustrial.com',
-      contacto_nombre: 'Roberto Gómez',
-      contacto_cargo: 'Ingeniero de Servicio',
-      estado: 'Activo',
-      seguro_RT: true,
-      seguro_vida: false,
-      habilitacion_personal: 'Vigente hasta 2025-01-31',
-      habilitacion_vehiculo: 'No requiere',
-      personal_contratado: 6,
-      documentos: 5,
-      vencimiento_documentacion: '2024-07-10'
-    }
+  const [personalProveedor, setPersonalProveedor] = useState([])
+  
+  // Estados para ColumnSelector
+  const [mostrarColumnSelector, setMostrarColumnSelector] = useState(false)
+  const [columnasVisibles, setColumnasVisibles] = useState({
+    'codigo': true,
+    'razon_social': true,
+    'cuit': true,
+    'rubro': true,
+    'estado': true,
+    'contacto_nombre': false,
+    'telefono': false,
+    'email': false,
+    'localidad': false,
+    'provincia': false,
+    'direccion': false,
+    'sector_servicio': false,
+    'servicio': false,
+    'seguro_RT': false,
+    'habilitacion_personal': false,
+    'vencimiento_documentacion': false,
+    'personal_contratado': false
+  })
+  
+  // Handlers para ColumnSelector
+  const abrirColumnSelector = () => setMostrarColumnSelector(true)
+  const cerrarColumnSelector = () => setMostrarColumnSelector(false)
+  const toggleColumna = (columnaKey) => {
+    setColumnasVisibles(prev => ({
+      ...prev,
+      [columnaKey]: !prev[columnaKey]
+    }))
+  }
+  
+  // Estados para Carga Masiva
+  const [mostrarCargaMasiva, setMostrarCargaMasiva] = useState(false)
+  
+  // Plantilla para carga masiva de proveedores
+  const proveedoresTemplateFields = [
+    'Código', 'Razón Social', 'CUIT', 'Rubro', 'Contacto', 
+    'Teléfono', 'Email', 'Localidad', 'Provincia', 'Estado'
   ]
-
-  const personalProveedores = [
-    {
-      id: 1,
-      proveedor_id: 'PROV-001',
-      nombre: 'Juan Pérez',
-      dni: '30123456',
-      cargo: 'Guardia de Seguridad',
-      capacitaciones: ['Seguridad Industrial', 'Primeros Auxilios'],
-      seguro_vida: true,
-      vencimiento_capacitacion: '2024-08-15'
-    },
-    {
-      id: 2,
-      proveedor_id: 'PROV-001',
-      nombre: 'María González',
-      dni: '28987654',
-      cargo: 'Supervisora de Seguridad',
-      capacitaciones: ['Seguridad Avanzada', 'Manejo de Crisis'],
-      seguro_vida: true,
-      vencimiento_capacitacion: '2024-09-30'
+  const proveedoresRequiredFields = ['Razón Social', 'CUIT', 'Rubro']
+  
+  // Exportar a XLSX
+  const handleExportToXLSX = () => {
+    if (proveedoresFiltrados.length === 0) {
+      alert('⚠️ No hay datos para exportar')
+      return
     }
-  ]
-
-  const handleOpenModal = (tipo, proveedor = null) => {
-    setModalType(tipo)
-    setProveedorSeleccionado(proveedor)
-    setModalOpen(true)
+    
+    try {
+      const dataToExport = proveedoresFiltrados.map(p => ({
+        Código: p.codigo || '',
+        'Razón Social': p.razon_social || '',
+        CUIT: p.cuit || '',
+        Rubro: p.rubro || '',
+        Estado: p.estado || '',
+        'Nombre Contacto': p.contacto_nombre || '',
+        Teléfono: p.telefono || '',
+        Email: p.email || '',
+        Localidad: p.localidad || '',
+        Provincia: p.provincia || '',
+        Dirección: p.direccion || '',
+        'Sector/Servicio': p.sector_servicio || p.rubro || '',
+        Servicio: p.servicio || '',
+        'Seguro RT': p.seguro_RT ? 'Sí' : 'No',
+        'Habilitación Personal': p.habilitacion_personal || '',
+        'Venc. Documentación': p.vencimiento_documentacion || '',
+        'Personal Contratado': p.personal_contratado || 0
+      }))
+      
+      const ws = XLSX.utils.json_to_sheet(dataToExport)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Proveedores')
+      
+      // Ajustar ancho de columnas
+      const wscols = [
+        { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 12 },
+        { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 20 },
+        { wch: 40 }, { wch: 20 }, { wch: 25 }, { wch: 10 }, { wch: 25 }, { wch: 18 }, { wch: 15 }
+      ];
+      ws['!cols'] = wscols
+      
+      const date = new Date().toISOString().split('T')[0]
+      XLSX.writeFile(wb, `proveedores_${date}.xlsx`)
+      
+      alert('✅ Proveedores exportados exitosamente')
+    } catch (error) {
+      console.error('Error exportando:', error)
+      alert('❌ Error al exportar datos')
+    }
   }
 
-  const handleCloseModal = () => {
-    setModalOpen(false)
-    setProveedorSeleccionado(null)
+  // Efecto para sincronizar filtros
+  useEffect(() => {
+    if (filtroRubro && filtroRubro !== 'Todos los rubros') {
+      handleRubroFilter(filtroRubro)
+    }
+    if (filtroEstado && filtroEstado !== 'Todos los estados') {
+      handleEstadoFilter(filtroEstado)
+    }
+    if (filtroLocalidad && filtroLocalidad !== 'Todas las localidades') {
+      handleLocalidadFilter(filtroLocalidad)
+    }
+  }, [filtroRubro, filtroEstado, filtroLocalidad])
+
+  // Handler para abrir modal de documentos (necesario para carga de personal)
+  const handleOpenDocumentosModal = async (proveedor) => {
+    openDocumentosModal(proveedor);
+    // Cargar personal si es modal de documentos
+    try {
+      const response = await proveedoresService.getPersonalProveedor(proveedor.id);
+      if (response.success) {
+        setPersonalProveedor(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error cargando personal:', error);
+    }
   }
 
-  const handleSaveProveedor = (datos) => {
-    console.log('Guardar proveedor:', datos)
-    handleCloseModal()
+  const handleSaveProveedor = async (datos) => {
+    try {
+      if (isCreateModalOpen) {
+        await createProveedor(datos)
+      } else if (isEditModalOpen && selectedProveedor) {
+        await updateProveedor(selectedProveedor.id, datos)
+      }
+      // Cerrar el modal correspondiente
+      if (isCreateModalOpen) {
+        closeCreateModal()
+      } else if (isEditModalOpen) {
+        closeEditModal()
+      } else if (isViewModalOpen) {
+        closeViewModal()
+      }
+    } catch (error) {
+      console.error('Error guardando proveedor:', error)
+    }
   }
 
-  const handleDeleteProveedor = (id) => {
+  const handleDeleteProveedor = async (id) => {
     if (window.confirm('¿Está seguro de eliminar este proveedor?')) {
-      console.log('Eliminar proveedor:', id)
+      await deleteProveedor(id)
+    }
+  }
+  
+  // Manejar datos de carga masiva
+  const handleDataLoaded = async (data) => {
+    try {
+      // Normalizar los datos del Excel al formato del formulario
+      const normalizedData = data.map(row => ({
+        razon_social: row['Razón Social'] || row['Razon Social'] || row.razon_social || '',
+        cuit: row.CUIT || row.cuit || String(row.CUIT).replace(/[- ]/g, ''),
+        rubro: row.Rubro || row.rubro || '',
+        contacto_nombre: row.Contacto || row.contacto_nombre || row['Nombre Contacto'] || '',
+        telefono: row.Teléfono || row.telefono || row['Teléfono'] || '',
+        email: row.Email || row.email || row['Correo'] || '',
+        localidad: row.Localidad || row.localidad || '',
+        provincia: row.Provincia || row.provincia || '',
+        direccion: row.Dirección || row.direccion || row['Dirección'] || '',
+        sector_servicio: row['Sector/Servicio'] || row.sector_servicio || row.Sector || '',
+        servicio: row.Servicio || row.servicio || '',
+        estado: row.Estado || row.estado || 'Activo'
+      }))
+      
+      // Guardar cada registro
+      for (const proveedorData of normalizedData) {
+        await createProveedor(proveedorData)
+      }
+    } catch (error) {
+      console.error('Error en carga masiva:', error)
+      alert('Error al procesar algunos registros')
     }
   }
 
+  // Filtrar localmente para la UI
   const proveedoresFiltrados = proveedores.filter(prov => {
-    if (filtroRubro && prov.rubro !== filtroRubro) return false
-    if (filtroEstado && prov.estado !== filtroEstado) return false
-    if (filtroLocalidad && prov.localidad !== filtroLocalidad) return false
+    if (filtroRubro && filtroRubro !== 'Todos los rubros' && prov.rubro !== filtroRubro) return false
+    if (filtroEstado && filtroEstado !== 'Todos los estados' && prov.estado !== filtroEstado) return false
+    if (filtroLocalidad && filtroLocalidad !== 'Todas las localidades' && prov.localidad !== filtroLocalidad) return false
     return true
   })
 
-  const rubrosUnicos = [...new Set(proveedores.map(p => p.rubro))]
-  const localidadesUnicas = [...new Set(proveedores.map(p => p.localidad))]
+  // Dynamic获取唯一选项
+  const rubrosUnicos = filterOptions.rubros?.filter(r => r !== 'Todos los rubros') || []
+  const localidadesUnicas = filterOptions.localidades?.filter(l => l !== 'Todas las localidades') || []
+
+  // 计算统计信息
+  const proveedoresActivos = proveedores.filter(p => p.estado === 'Activo').length
+  const proveedoresConSeguroRT = proveedores.filter(p => p.seguro_RT).length
+  const docsPorVencer = proveedores.filter(p => {
+    if (!p.vencimiento_documentacion) return false
+    const fechaVenc = new Date(p.vencimiento_documentacion)
+    return fechaVenc < new Date(Date.now() + 30*24*60*60*1000)
+  }).length
+  const totalPersonalContratado = proveedores.reduce((sum, prov) => sum + (prov.personal_contratado || 0), 0)
+
+  if (loading && proveedores.length === 0) {
+    return (
+      <div className="proveedores-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Cargando proveedores desde el servidor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="proveedores-page">
+        <div className="error-message">
+          <strong>Error de conexión:</strong> {error}
+          <button className="btn btn-primary" onClick={loadProveedores}>Reintentar</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="proveedores-page">
@@ -156,21 +282,15 @@ const Proveedores = () => {
           <div className="label">Proveedores Activos</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">{proveedores.filter(p => p.seguro_RT).length}</div>
+          <div className="number">{proveedoresConSeguroRT}</div>
           <div className="label">Con Seguro RT</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">
-            {proveedores.filter(p => 
-              new Date(p.vencimiento_documentacion) < new Date(Date.now() + 30*24*60*60*1000)
-            ).length}
-          </div>
+          <div className="number">{docsPorVencer}</div>
           <div className="label">Docs. por Vencer</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">
-            {proveedores.reduce((sum, prov) => sum + prov.personal_contratado, 0)}
-          </div>
+          <div className="number">{totalPersonalContratado}</div>
           <div className="label">Personal Contratado</div>
         </div>
       </div>
@@ -181,16 +301,31 @@ const Proveedores = () => {
             <span className="section-icon">🤝</span>
             Gestión de Proveedores Terciarizados
           </h2>
+          {/* Botón de Carga Masiva - Separado */}
+          <div className="carga-masiva-toolbar">
+            <button 
+              className="purple"
+              onClick={() => setMostrarCargaMasiva(true)}
+            >
+              <span className="btn-icon">📥</span> Carga Masiva
+            </button>
+          </div>
           <div className="table-toolbar">
-            <button className="btn btn-secondary">
+            <button 
+              className="teal"
+              onClick={abrirColumnSelector}
+            >
               <span className="btn-icon">👁️</span> Columnas
             </button>
-            <button className="btn btn-secondary">
+            <button 
+              className="blue"
+              onClick={handleExportToXLSX}
+            >
               <span className="btn-icon">📤</span> Exportar
             </button>
             <button 
-              className="btn btn-primary"
-              onClick={() => handleOpenModal('crear')}
+              className="green"
+              onClick={openCreateModal}
             >
               <span className="btn-icon">+</span> Nuevo Proveedor
             </button>
@@ -198,7 +333,12 @@ const Proveedores = () => {
         </div>
 
         <div className="filter-bar">
-          <input type="text" className="filter-select" placeholder="Buscar proveedor..." />
+          <input 
+            type="text" 
+            className="filter-select" 
+            placeholder="Buscar proveedor..." 
+            onChange={(e) => handleSearch(e.target.value)}
+          />
           <select 
             className="filter-select"
             value={filtroRubro}
@@ -229,114 +369,145 @@ const Proveedores = () => {
             <option value="Suspendido">Suspendido</option>
             <option value="Inactivo">Inactivo</option>
           </select>
+          {(filtroRubro || filtroEstado || filtroLocalidad) && (
+            <button 
+              className="secondary"
+              onClick={() => {
+                setFiltroRubro('')
+                setFiltroEstado('')
+                setFiltroLocalidad('')
+                resetFilters()
+              }}
+            >
+              Limpiar Filtros
+            </button>
+          )}
         </div>
 
-        <table className="data-table">
+        <div className="data-table-wrapper">
+          <table className="data-table">
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Razón Social</th>
-              <th>CUIT</th>
-              <th>Rubro</th>
-              <th>Sector/Servicio</th>
-              <th>Ubicación</th>
-              <th>Seguro RT</th>
-              <th>Personal</th>
-              <th>Venc. Doc.</th>
-              <th>Estado</th>
+              {columnasVisibles.codigo && <th>Código</th>}
+              {columnasVisibles.razon_social && <th>Razón Social</th>}
+              {columnasVisibles.cuit && <th>CUIT</th>}
+              {columnasVisibles.rubro && <th>Rubro</th>}
+              {columnasVisibles.sector_servicio && <th>Sector/Servicio</th>}
+              {columnasVisibles.localidad && columnasVisibles.provincia && <th>Ubicación</th>}
+              {columnasVisibles.seguro_RT && <th>Seguro RT</th>}
+              {columnasVisibles.personal_contratado && <th>Personal</th>}
+              {columnasVisibles.vencimiento_documentacion && <th>Venc. Doc.</th>}
+              {columnasVisibles.estado && <th>Estado</th>}
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {proveedoresFiltrados.map((proveedor) => {
-              const personalProv = personalProveedores.filter(p => p.proveedor_id === proveedor.id)
-              
               return (
                 <tr key={proveedor.id}>
-                  <td>
-                    <strong>{proveedor.codigo}</strong>
-                  </td>
-                  <td>
-                    <div>
-                      <strong>{proveedor.razon_social}</strong>
-                      <div className="contacto-info">
-                        <small>👤 {proveedor.contacto_nombre}</small>
-                        <small>📞 {proveedor.telefono}</small>
+                  {columnasVisibles.codigo && (
+                    <td>
+                      <strong>{proveedor.codigo}</strong>
+                    </td>
+                  )}
+                  {columnasVisibles.razon_social && (
+                    <td>
+                      <div>
+                        <strong>{proveedor.razon_social}</strong>
+                        <div className="contacto-info">
+                          {columnasVisibles.contacto_nombre && <small>👤 {proveedor.contacto_nombre}</small>}
+                          {columnasVisibles.telefono && <small>📞 {proveedor.telefono}</small>}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td>{proveedor.cuit}</td>
-                  <td>
-                    <span className="rubro-badge">{proveedor.rubro}</span>
-                  </td>
-                  <td>
-                    <div>
-                      <div><strong>{proveedor.sector_servicio}</strong></div>
-                      <small>{proveedor.servicio}</small>
-                    </div>
-                  </td>
-                  <td>
-                    <div>
-                      <div>{proveedor.localidad}</div>
-                      <small>{proveedor.provincia}</small>
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`seguro-badge ${proveedor.seguro_RT ? 'seguro-si' : 'seguro-no'}`}>
-                      {proveedor.seguro_RT ? '✅ Sí' : '❌ No'}
-                    </span>
-                    {proveedor.habilitacion_personal && (
-                      <small>👤 {proveedor.habilitacion_personal.split('hasta')[1]}</small>
-                    )}
-                  </td>
-                  <td>
-                    <div className="personal-info">
-                      <span className="personal-count">👥 {proveedor.personal_contratado}</span>
-                      {personalProv.length > 0 && (
-                        <small>{personalProv[0].nombre} +{personalProv.length-1} más</small>
+                    </td>
+                  )}
+                  {columnasVisibles.cuit && <td>{proveedor.cuit}</td>}
+                  {columnasVisibles.rubro && (
+                    <td>
+                      <span className="rubro-badge">{proveedor.rubro}</span>
+                    </td>
+                  )}
+                  {columnasVisibles.sector_servicio && (
+                    <td>
+                      <div>
+                        <div><strong>{proveedor.sector_servicio || proveedor.rubro}</strong></div>
+                        {columnasVisibles.servicio && <small>{proveedor.servicio || ''}</small>}
+                      </div>
+                    </td>
+                  )}
+                  {columnasVisibles.localidad && columnasVisibles.provincia && (
+                    <td>
+                      <div>
+                        <div>{proveedor.localidad}</div>
+                        <small>{proveedor.provincia}</small>
+                      </div>
+                    </td>
+                  )}
+                  {columnasVisibles.seguro_RT && (
+                    <td>
+                      <span className={`seguro-badge ${proveedor.seguro_RT ? 'seguro-si' : 'seguro-no'}`}>
+                        {proveedor.seguro_RT ? '✅ Sí' : '❌ No'}
+                      </span>
+                      {proveedor.habilitacion_personal && proveedor.habilitacion_personal.includes('hasta') && (
+                        <small>👤 {proveedor.habilitacion_personal.split('hasta')[1]}</small>
                       )}
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`vencimiento-badge ${
-                      new Date(proveedor.vencimiento_documentacion) < new Date() ? 'vencido' :
-                      new Date(proveedor.vencimiento_documentacion) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
-                    }`}>
-                      {new Date(proveedor.vencimiento_documentacion).toLocaleDateString('es-AR')}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${proveedor.estado === 'Activo' ? 'status-active' : 'status-inactivo'}`}>
-                      {proveedor.estado}
-                    </span>
-                  </td>
+                    </td>
+                  )}
+                  {columnasVisibles.personal_contratado && (
+                    <td>
+                      <div className="personal-info">
+                        <span className="personal-count">👥 {proveedor.personal_contratado || 0}</span>
+                      </div>
+                    </td>
+                  )}
+                  {columnasVisibles.vencimiento_documentacion && (
+                    <td>
+                      <span className={`vencimiento-badge ${
+                        new Date(proveedor.vencimiento_documentacion) < new Date() ? 'vencido' :
+                        new Date(proveedor.vencimiento_documentacion) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
+                      }`}>
+                        {proveedor.vencimiento_documentacion ? new Date(proveedor.vencimiento_documentacion).toLocaleDateString('es-AR') : 'N/A'}
+                      </span>
+                    </td>
+                  )}
+                  {columnasVisibles.estado && (
+                    <td>
+                      <span className={`status-badge ${proveedor.estado === 'Activo' ? 'status-active' : 'status-inactivo'}`}>
+                        {proveedor.estado}
+                      </span>
+                    </td>
+                  )}
                   <td>
                     <div className="action-buttons">
                       <button 
                         className="icon-btn" 
                         title="Ver detalles"
-                        onClick={() => handleOpenModal('ver', proveedor)}
+                        onClick={() => openViewModal(proveedor)}
                       >
                         👁️
                       </button>
                       <button 
                         className="icon-btn" 
                         title="Editar"
-                        onClick={() => handleOpenModal('editar', proveedor)}
+                        onClick={() => openEditModal(proveedor)}
                       >
                         ✏️
                       </button>
                       <button 
                         className="icon-btn" 
                         title="Documentación y Personal"
-                        onClick={() => handleOpenModal('documentos', proveedor)}
+                        onClick={() => handleOpenDocumentosModal(proveedor)}
                       >
                         📄
                       </button>
                       <button 
                         className="icon-btn" 
                         title="Eliminar"
-                        onClick={() => handleDeleteProveedor(proveedor.id)}
+                        onClick={() => {
+                        if (window.confirm('¿Está seguro de eliminar este proveedor?')) {
+                          deleteProveedor(proveedor.id)
+                        }
+                      }}
                         style={{ color: '#ef4444' }}
                       >
                         🗑️
@@ -348,34 +519,59 @@ const Proveedores = () => {
             })}
           </tbody>
         </table>
+        </div>
+
+        {/* Paginación */}
+        {pagination.total_pages > 1 && (
+          <div className="pagination">
+            <button
+              className="pagination-btn"
+              disabled={pagination.current_page === 1 || loading}
+              onClick={() => loadProveedores({ page: pagination.current_page - 1 })}
+            >
+              ← Anterior
+            </button>
+            <span className="pagination-info">
+              Página {pagination.current_page} de {pagination.total_pages}
+              <small> ({pagination.total} registros)</small>
+            </span>
+            <button
+              className="pagination-btn"
+              disabled={pagination.current_page === pagination.total_pages || loading}
+              onClick={() => loadProveedores({ page: pagination.current_page + 1 })}
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Modal para Proveedores */}
-      {modalOpen && (modalType === 'crear' || modalType === 'editar' || modalType === 'ver') && (
+      {(isCreateModalOpen || isEditModalOpen || isViewModalOpen) && (
         <GenericModal
           title={
-            modalType === 'crear' ? '➕ Nuevo Proveedor' :
-            modalType === 'editar' ? `✏️ Editar Proveedor: ${proveedorSeleccionado?.razon_social}` :
-            `👁️ Ver Proveedor: ${proveedorSeleccionado?.razon_social}`
+            isCreateModalOpen ? '➕ Nuevo Proveedor' :
+            isEditModalOpen ? `✏️ Editar Proveedor: ${selectedProveedor?.razon_social}` :
+            `👁️ Ver Proveedor: ${selectedProveedor?.razon_social}`
           }
-          onClose={handleCloseModal}
+          onClose={isCreateModalOpen ? closeCreateModal : isEditModalOpen ? closeEditModal : closeViewModal}
           size="large"
         >
           <ProveedorForm
-            mode={modalType}
-            proveedor={proveedorSeleccionado}
-            onClose={handleCloseModal}
+            mode={isCreateModalOpen ? 'crear' : isEditModalOpen ? 'editar' : 'ver'}
+            proveedor={selectedProveedor}
+            onClose={isCreateModalOpen ? closeCreateModal : isEditModalOpen ? closeEditModal : closeViewModal}
             onSave={handleSaveProveedor}
-            readOnly={modalType === 'ver'}
+            readOnly={isViewModalOpen}
           />
         </GenericModal>
       )}
 
       {/* Modal para Documentación y Personal */}
-      {modalOpen && modalType === 'documentos' && proveedorSeleccionado && (
+      {isDocumentosModalOpen && selectedProveedor && (
         <GenericModal
-          title={`📄 ${proveedorSeleccionado.razon_social} - Documentación y Personal`}
-          onClose={handleCloseModal}
+          title={`📄 ${selectedProveedor.razon_social} - Documentación y Personal`}
+          onClose={closeDocumentosModal}
           size="xlarge"
         >
           <div className="proveedor-documentacion-container">
@@ -383,12 +579,12 @@ const Proveedores = () => {
             <div className="proveedor-info">
               <h3>Información del Proveedor</h3>
               <div className="info-grid">
-                <div><strong>Razón Social:</strong> {proveedorSeleccionado.razon_social}</div>
-                <div><strong>CUIT:</strong> {proveedorSeleccionado.cuit}</div>
-                <div><strong>Rubro:</strong> {proveedorSeleccionado.rubro}</div>
-                <div><strong>Sector/Servicio:</strong> {proveedorSeleccionado.sector_servicio} - {proveedorSeleccionado.servicio}</div>
-                <div><strong>Ubicación:</strong> {proveedorSeleccionado.localidad}, {proveedorSeleccionado.provincia}</div>
-                <div><strong>Seguro RT:</strong> {proveedorSeleccionado.seguro_RT ? '✅ Sí' : '❌ No'}</div>
+                <div><strong>Razón Social:</strong> {selectedProveedor.razon_social}</div>
+                <div><strong>CUIT:</strong> {selectedProveedor.cuit}</div>
+                <div><strong>Rubro:</strong> {selectedProveedor.rubro}</div>
+                <div><strong>Sector/Servicio:</strong> {selectedProveedor.sector_servicio || selectedProveedor.rubro} - {selectedProveedor.servicio || ''}</div>
+                <div><strong>Ubicación:</strong> {selectedProveedor.localidad}, {selectedProveedor.provincia}</div>
+                <div><strong>Seguro RT:</strong> {selectedProveedor.seguro_RT ? '✅ Sí' : '❌ No'}</div>
               </div>
             </div>
 
@@ -399,29 +595,28 @@ const Proveedores = () => {
                 <span>+</span> Agregar Personal
               </button>
               
-              <table className="data-table small">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>DNI</th>
-                    <th>Cargo</th>
-                    <th>Capacitaciones</th>
-                    <th>Seguro Vida</th>
-                    <th>Venc. Capacitación</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {personalProveedores
-                    .filter(p => p.proveedor_id === proveedorSeleccionado.id)
-                    .map(persona => (
+              {personalProveedor.length > 0 ? (
+                <table className="data-table small">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>DNI</th>
+                      <th>Cargo</th>
+                      <th>Capacitaciones</th>
+                      <th>Seguro Vida</th>
+                      <th>Venc. Capacitación</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {personalProveedor.map(persona => (
                       <tr key={persona.id}>
-                        <td>{persona.nombre}</td>
+                        <td>{persona.nombre || persona.nombre_completo}</td>
                         <td>{persona.dni}</td>
-                        <td>{persona.cargo}</td>
+                        <td>{persona.cargo || persona.puesto}</td>
                         <td>
                           <div className="capacitaciones-list">
-                            {persona.capacitaciones.map((cap, idx) => (
+                            {(persona.capacitaciones || []).map((cap, idx) => (
                               <span key={idx} className="capacitacion-badge">{cap}</span>
                             ))}
                           </div>
@@ -447,10 +642,12 @@ const Proveedores = () => {
                           </div>
                         </td>
                       </tr>
-                    ))
-                  }
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="no-data-message">No hay personal registrado para este proveedor.</p>
+              )}
             </div>
 
             {/* Documentación */}
@@ -461,10 +658,10 @@ const Proveedores = () => {
                 <div className="documento-card">
                   <h4>Habilitaciones</h4>
                   <div className="documento-info">
-                    <strong>Personal:</strong> {proveedorSeleccionado.habilitacion_personal || 'No especificado'}
+                    <strong>Personal:</strong> {selectedProveedor.habilitacion_personal || 'No especificado'}
                   </div>
                   <div className="documento-info">
-                    <strong>Vehículo:</strong> {proveedorSeleccionado.habilitacion_vehiculo || 'No especificado'}
+                    <strong>Vehículo:</strong> {selectedProveedor.habilitacion_vehiculo || 'No especificado'}
                   </div>
                   <button className="btn btn-sm btn-secondary">Subir Habilitación</button>
                 </div>
@@ -472,10 +669,10 @@ const Proveedores = () => {
                 <div className="documento-card">
                   <h4>Seguros</h4>
                   <div className="documento-info">
-                    <strong>Seguro RT:</strong> {proveedorSeleccionado.seguro_RT ? '✅ Vigente' : '❌ No tiene'}
+                    <strong>Seguro RT:</strong> {selectedProveedor.seguro_RT ? '✅ Vigente' : '❌ No tiene'}
                   </div>
                   <div className="documento-info">
-                    <strong>Seguro Vida Personal:</strong> {proveedorSeleccionado.seguro_vida ? '✅ Sí' : '❌ No'}
+                    <strong>Seguro Vida Personal:</strong> {selectedProveedor.seguro_vida ? '✅ Sí' : '❌ No'}
                   </div>
                   <button className="btn btn-sm btn-secondary">Subir Póliza</button>
                 </div>
@@ -483,14 +680,14 @@ const Proveedores = () => {
                 <div className="documento-card">
                   <h4>Certificados</h4>
                   <div className="documento-info">
-                    <strong>Capacitación:</strong> Disponibles: {proveedorSeleccionado.documentos || 0}
+                    <strong>Capacitación:</strong> Disponibles: {selectedProveedor.documentos || 0}
                   </div>
                   <div className="documento-info">
                     <strong>Vencimiento:</strong> 
                     <span className={`vencimiento-badge ${
-                      new Date(proveedorSeleccionado.vencimiento_documentacion) < new Date() ? 'vencido' : 'vigente'
+                      selectedProveedor.vencimiento_documentacion && new Date(selectedProveedor.vencimiento_documentacion) < new Date() ? 'vencido' : 'vigente'
                     }`}>
-                      {new Date(proveedorSeleccionado.vencimiento_documentacion).toLocaleDateString('es-AR')}
+                      {selectedProveedor.vencimiento_documentacion ? new Date(selectedProveedor.vencimiento_documentacion).toLocaleDateString('es-AR') : 'N/A'}
                     </span>
                   </div>
                   <button className="btn btn-sm btn-secondary">Subir Certificado</button>
@@ -516,6 +713,25 @@ const Proveedores = () => {
           </div>
         </GenericModal>
       )}
+      
+      {/* Modal ColumnSelector */}
+      {mostrarColumnSelector && (
+        <ColumnSelectorProveedores
+          columnasVisibles={columnasVisibles}
+          onToggleColumna={toggleColumna}
+          onClose={cerrarColumnSelector}
+        />
+      )}
+      
+      {/* Modal de Carga Masiva */}
+      <CargaMasiva
+        isOpen={mostrarCargaMasiva}
+        onClose={() => setMostrarCargaMasiva(false)}
+        onDataLoaded={handleDataLoaded}
+        title="Carga Masiva de Proveedores"
+        templateFields={proveedoresTemplateFields}
+        requiredFields={proveedoresRequiredFields}
+      />
     </div>
   )
 }

@@ -182,31 +182,62 @@
 .action-buttons {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .icon-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s;
-  font-size: 16px;
-  background: #f8fafc;
-  color: #64748b;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  background: transparent;
+  padding: 4px;
+  margin: 0;
+  line-height: 1;
 }
 
 .icon-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
 }
 
-.icon-btn:nth-child(1):hover { background: rgba(86, 166, 158, 0.2); color: #56A69E; }
-.icon-btn:nth-child(2):hover { background: rgba(6, 100, 150, 0.2); color: #066496; }
-.icon-btn:nth-child(3):hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.icon-btn:focus {
+  outline: 2px solid #066496;
+  outline-offset: 2px;
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Colores por acción */
+.icon-btn[title="Ver"] {
+  color: #56A69E;
+}
+.icon-btn[title="Ver"]:hover {
+  background: rgba(86, 166, 158, 0.15);
+}
+
+.icon-btn[title="Editar"] {
+  color: #066496;
+}
+.icon-btn[title="Editar"]:hover {
+  background: rgba(6, 100, 150, 0.15);
+}
+
+.icon-btn[title="Eliminar"] {
+  color: #ef4444;
+}
+.icon-btn[title="Eliminar"]:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
 
 /* Responsive para tablets */
 @media (max-width: 1024px) {
@@ -239,4 +270,17 @@
   .action-btn {
     min-width: calc(33.333% - 7px);
   }
+}
+
+/* ASEGURAR QUE LOS BOTONES SIEMPRE SEAN CLICKEABLES */
+.icon-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+.actions-cell {
+  pointer-events: auto !important;
+  z-index: 5 !important;
 }

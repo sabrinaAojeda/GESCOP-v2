@@ -1,11 +1,10 @@
 <?php
-header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers,Content-Type,Access-Control-Allow-Methods, Authorization, X-Requested-With');
 
-require_once '../config/conexion.php';
-require_once '../models/Servicio.php';
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/models/Servicio.php';
 
 class ServiciosController {
     private $servicio;
@@ -20,7 +19,7 @@ class ServiciosController {
     public function obtenerServiciosEmpresa($empresa_id) {
         try {
             // Obtener sedes de la empresa primero
-            $querySedes = "SELECT id FROM sedes WHERE empresa_id = ? AND activo = 1";
+            $querySedes = "SELECT id FROM sedes WHERE empresa_id = ?";
             $stmtSedes = $this->conn->prepare($querySedes);
             $stmtSedes->execute([$empresa_id]);
             $sedes = $stmtSedes->fetchAll(PDO::FETCH_COLUMN);

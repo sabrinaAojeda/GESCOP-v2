@@ -1,19 +1,45 @@
 // src/pages/flota/EquipamientoVehiculos/EquipamientoVehiculos.jsx
 import React, { useState, useEffect } from "react";
 import { useEquipamientos } from "@hooks/useEquipamientos";
+import useExportXLSX from "@hooks/useExportXLSX";
 import GenericModal from "@components/Common/GenericModal";
 import ColumnSelectorEquipamientos from "@components/Common/ColumnSelectorEquipamientos";
 import ModalEquipamiento from "@components/Common/ModalEquipamiento";
 import ModalDocumentacion from "@components/Common/ModalDocumentacion";
+import CargaMasiva from "@components/Common/CargaMasiva";
+import "@assets/css/buttons.css";
 import "./EquipamientoVehiculos.css";
 
 const EquipamientoVehiculos = () => {
-  const { equipamientos, loading, error, agregarEquipamiento, actualizarEquipamiento, eliminarEquipamiento } = useEquipamientos();
+  const {
+    equipamientos,
+    loading,
+    error,
+    selectedEquipamiento,
+    createEquipamiento,
+    updateEquipamiento,
+    deleteEquipamiento,
+    isCreateModalOpen,
+    isEditModalOpen,
+    isViewModalOpen,
+    isDocumentacionModalOpen,
+    openCreateModal,
+    openEditModal,
+    openViewModal,
+    openDocumentacionModal,
+    closeCreateModal,
+    closeEditModal,
+    closeViewModal,
+    closeDocumentacionModal,
+    mostrarCargaMasiva,
+    setMostrarCargaMasiva
+  } = useEquipamientos();
+  
+  // Hook para exportar datos
+  const { exportToXLSX } = useExportXLSX();
   
   // Estados para la gestión de la UI
   const [equipamientosFiltrados, setEquipamientosFiltrados] = useState([]);
-  const [modalAbierto, setModalAbierto] = useState(null);
-  const [equipamientoSeleccionado, setEquipamientoSeleccionado] = useState(null);
   const [mostrarColumnSelector, setMostrarColumnSelector] = useState(false);
   const [filtros, setFiltros] = useState({
     buscar: '',
@@ -70,30 +96,17 @@ const EquipamientoVehiculos = () => {
     setEquipamientosFiltrados(resultados);
   }, [equipamientos, filtros]);
 
-  // Handlers para los modales
-  const abrirModalNuevo = () => {
-    setModalAbierto('nuevo');
-    setEquipamientoSeleccionado(null);
-  };
-
+  // Handlers para los modales - Usando funciones del hook
   const abrirModalVer = (equipamiento) => {
-    setModalAbierto('ver');
-    setEquipamientoSeleccionado(equipamiento);
+    openViewModal(equipamiento);
   };
 
   const abrirModalEditar = (equipamiento) => {
-    setModalAbierto('editar');
-    setEquipamientoSeleccionado(equipamiento);
+    openEditModal(equipamiento);
   };
 
   const abrirModalDocumentacion = (equipamiento) => {
-    setModalAbierto('documentacion');
-    setEquipamientoSeleccionado(equipamiento);
-  };
-
-  const cerrarModal = () => {
-    setModalAbierto(null);
-    setEquipamientoSeleccionado(null);
+    openDocumentacionModal(equipamiento);
   };
 
   // Handlers para ColumnSelector
@@ -103,6 +116,31 @@ const EquipamientoVehiculos = () => {
 
   const cerrarColumnSelector = () => {
     setMostrarColumnSelector(false);
+  };
+
+  const abrirCargaMasiva = () => {
+    setMostrarCargaMasiva(true);
+  };
+
+  const cerrarCargaMasiva = () => {
+    setMostrarCargaMasiva(false);
+  };
+
+  // Handler para exportar datos
+  const handleExportar = () => {
+    // Preparar datos para exportación - solo campos visibles
+    const datosExportar = equipamientos.map(eq => ({
+      Código: eq.codigo || '',
+      Descripción: eq.descripcion || '',
+      Tipo: eq.tipo || '',
+      'Vehículo Asignado': eq.vehiculo_asignado || 'No asignado',
+      Estado: eq.estado || '',
+      'Última Revisión': eq.ultima_revision || '',
+      'Próxima Revisión': eq.proxima_revision || '',
+      Observaciones: eq.observaciones || ''
+    }));
+    
+    exportToXLSX(datosExportar, 'Equipamientos_Vehiculos');
   };
 
   const toggleColumna = (columnaKey) => {
@@ -115,33 +153,43 @@ const EquipamientoVehiculos = () => {
   // Handlers para CRUD
   const handleCrearEquipamiento = (datosEquipamiento) => {
     console.log('Creando equipamiento:', datosEquipamiento);
-    agregarEquipamiento(datosEquipamiento);
-    cerrarModal();
-    alert('Equipamiento creado correctamente');
+    createEquipamiento(datosEquipamiento)
+      .then((result) => {
+        if (result.success) {
+          alert('Equipamiento creado correctamente');
+        } else {
+          alert('Error: ' + result.error);
+        }
+      });
   };
 
   const handleActualizarEquipamiento = (datosEquipamiento) => {
     console.log('Actualizando equipamiento:', datosEquipamiento);
-    actualizarEquipamiento(equipamientoSeleccionado.id, datosEquipamiento);
-    cerrarModal();
-    alert('Equipamiento actualizado correctamente');
+    updateEquipamiento(selectedEquipamiento.id, datosEquipamiento)
+      .then((result) => {
+        if (result.success) {
+          alert('Equipamiento actualizado correctamente');
+        } else {
+          alert('Error: ' + result.error);
+        }
+      });
   };
 
   const handleEliminarEquipamiento = (id) => {
     const equipamiento = equipamientos.find(e => e.id === id);
     if (equipamiento && window.confirm(`¿Está seguro de eliminar el equipamiento ${equipamiento.codigo} - ${equipamiento.descripcion}? Esta acción no se puede deshacer.`)) {
-      eliminarEquipamiento(id);
+      deleteEquipamiento(id);
     }
   };
 
   const handleGuardarDocumentacion = (documentos) => {
-    if (equipamientoSeleccionado) {
-      actualizarEquipamiento(equipamientoSeleccionado.id, {
-        ...equipamientoSeleccionado,
+    if (selectedEquipamiento) {
+      updateEquipamiento(selectedEquipamiento.id, {
+        ...selectedEquipamiento,
         documentos: documentos
       });
     }
-    cerrarModal();
+    closeEditModal();
   };
 
   // Función para formatear fecha
@@ -240,13 +288,16 @@ const EquipamientoVehiculos = () => {
         <div className="section-header">
           <h2 className="section-title">🔧 Equipamiento de Vehículos</h2>
           <div className="table-toolbar">
-            <button className="btn btn-secondary" onClick={abrirColumnSelector}>
+            <button className="teal" onClick={abrirColumnSelector}>
               <span>👁️</span> Columnas
             </button>
-            <button className="btn btn-secondary">
+            <button className="blue" onClick={handleExportar}>
               <span>📤</span> Exportar
             </button>
-            <button className="btn btn-primary" onClick={abrirModalNuevo}>
+            <button className="purple" onClick={abrirCargaMasiva}>
+              <span>📥</span> Carga Masiva
+            </button>
+            <button className="green" onClick={openCreateModal}>
               <span>+</span> Nuevo Equipamiento
             </button>
           </div>
@@ -299,7 +350,8 @@ const EquipamientoVehiculos = () => {
         </div>
 
         {/* Tabla */}
-        <table className="data-table">
+        <div className="data-table-wrapper">
+          <table className="data-table">
           <thead>
             <tr>
               {columnasVisibles.codigo && <th>CÓDIGO</th>}
@@ -381,6 +433,7 @@ const EquipamientoVehiculos = () => {
             })}
           </tbody>
         </table>
+        </div>
         
         <div className="contador">
           Mostrando {equipamientosFiltrados.length} de {equipamientos.length} equipamientos
@@ -388,10 +441,10 @@ const EquipamientoVehiculos = () => {
       </section>
 
       {/* Modal Ver Equipamiento */}
-      {modalAbierto === 'ver' && equipamientoSeleccionado && (
+      {isViewModalOpen && selectedEquipamiento && (
         <GenericModal
-          title={`👁️ Detalles del Equipamiento - ${equipamientoSeleccionado.codigo}`}
-          onClose={cerrarModal}
+          title={`👁️ Detalles del Equipamiento - ${selectedEquipamiento.codigo}`}
+          onClose={closeViewModal}
           size="large"
         >
           <div className="equipamiento-details-modal">
@@ -399,49 +452,49 @@ const EquipamientoVehiculos = () => {
               <div>
                 <div className="detail-group">
                   <div className="detail-label">Código</div>
-                  <div className="detail-value">{equipamientoSeleccionado.codigo}</div>
+                  <div className="detail-value">{selectedEquipamiento.codigo}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Descripción</div>
-                  <div className="detail-value">{equipamientoSeleccionado.descripcion}</div>
+                  <div className="detail-value">{selectedEquipamiento.descripcion}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Tipo</div>
-                  <div className="detail-value">{equipamientoSeleccionado.tipo}</div>
+                  <div className="detail-value">{selectedEquipamiento.tipo}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Vehículo Asignado</div>
-                  <div className="detail-value">{equipamientoSeleccionado.vehiculo_asignado || 'No asignado'}</div>
+                  <div className="detail-value">{selectedEquipamiento.vehiculo_asignado || 'No asignado'}</div>
                 </div>
               </div>
               <div>
                 <div className="detail-group">
                   <div className="detail-label">Estado</div>
                   <div className="detail-value">
-                    <span className={`status-badge ${getEstadoClass(equipamientoSeleccionado.estado)}`}>
-                      {equipamientoSeleccionado.estado}
+                    <span className={`status-badge ${getEstadoClass(selectedEquipamiento.estado)}`}>
+                      {selectedEquipamiento.estado}
                     </span>
                   </div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Última Revisión</div>
-                  <div className="detail-value">{formatearFecha(equipamientoSeleccionado.ultima_revision) || 'No registrada'}</div>
+                  <div className="detail-value">{formatearFecha(selectedEquipamiento.ultima_revision) || 'No registrada'}</div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Próxima Revisión</div>
                   <div className="detail-value">
                     <span className={`status-badge ${
-                      estaVencido(equipamientoSeleccionado.proxima_revision) ? 'status-expired' : 
-                      estaProximoVencer(equipamientoSeleccionado.proxima_revision) ? 'status-warning' : 
+                      estaVencido(selectedEquipamiento.proxima_revision) ? 'status-expired' : 
+                      estaProximoVencer(selectedEquipamiento.proxima_revision) ? 'status-warning' : 
                       'status-active'
                     }`}>
-                      {formatearFecha(equipamientoSeleccionado.proxima_revision) || 'No programada'}
+                      {formatearFecha(selectedEquipamiento.proxima_revision) || 'No programada'}
                     </span>
                   </div>
                 </div>
                 <div className="detail-group">
                   <div className="detail-label">Observaciones</div>
-                  <div className="detail-value">{equipamientoSeleccionado.observaciones || 'Sin observaciones'}</div>
+                  <div className="detail-value">{selectedEquipamiento.observaciones || 'Sin observaciones'}</div>
                 </div>
               </div>
             </div>
@@ -449,8 +502,8 @@ const EquipamientoVehiculos = () => {
             <div className="documents-section">
               <h3 className="form-section-title">📄 Documentación Asociada</h3>
               <div className="document-cards">
-                {equipamientoSeleccionado.documentos && equipamientoSeleccionado.documentos.length > 0 ? (
-                  equipamientoSeleccionado.documentos.map(doc => (
+                {selectedEquipamiento.documentos && selectedEquipamiento.documentos.length > 0 ? (
+                  selectedEquipamiento.documentos.map(doc => (
                     <div key={doc.id} className="document-card">
                       <div className="document-card-header">
                         <div className="document-card-title">{doc.tipo}</div>
@@ -479,12 +532,12 @@ const EquipamientoVehiculos = () => {
             </div>
 
             <div className="modal-vehiculo-actions">
-              <button className="btn btn-secondary" onClick={cerrarModal}>
+              <button className="btn btn-secondary" onClick={closeViewModal}>
                 Cerrar
               </button>
               <button className="btn btn-primary" onClick={() => {
-                cerrarModal();
-                setTimeout(() => abrirModalEditar(equipamientoSeleccionado), 300);
+                closeViewModal();
+                setTimeout(() => openEditModal(selectedEquipamiento), 300);
               }}>
                 Editar Equipamiento
               </button>
@@ -494,27 +547,27 @@ const EquipamientoVehiculos = () => {
       )}
 
       {/* Modales existentes */}
-      {modalAbierto === 'nuevo' && (
+      {isCreateModalOpen && (
         <ModalEquipamiento
           mode="crear"
-          onClose={cerrarModal}
+          onClose={closeCreateModal}
           onSave={handleCrearEquipamiento}
         />
       )}
 
-      {modalAbierto === 'editar' && equipamientoSeleccionado && (
+      {isEditModalOpen && selectedEquipamiento && (
         <ModalEquipamiento
           mode="editar"
-          equipamiento={equipamientoSeleccionado}
-          onClose={cerrarModal}
+          equipamiento={selectedEquipamiento}
+          onClose={closeEditModal}
           onSave={handleActualizarEquipamiento}
         />
       )}
 
-      {modalAbierto === 'documentacion' && equipamientoSeleccionado && (
+      {isDocumentacionModalOpen && selectedEquipamiento && (
         <ModalDocumentacion
-          vehiculo={equipamientoSeleccionado}
-          onClose={cerrarModal}
+          vehiculo={selectedEquipamiento}
+          onClose={closeDocumentacionModal}
           onSave={handleGuardarDocumentacion}
         />
       )}
@@ -525,6 +578,27 @@ const EquipamientoVehiculos = () => {
           columnasVisibles={columnasVisibles}
           onToggleColumna={toggleColumna}
           onClose={cerrarColumnSelector}
+        />
+      )}
+
+      {/* Carga Masiva Modal */}
+      {mostrarCargaMasiva && (
+        <CargaMasiva
+          isOpen={mostrarCargaMasiva}
+          onClose={cerrarCargaMasiva}
+          titulo="Carga Masiva de Equipamientos"
+          camposPlantilla={[
+            { key: 'codigo', label: 'Código', requerido: true },
+            { key: 'descripcion', label: 'Descripción', requerido: true },
+            { key: 'tipo', label: 'Tipo', requerido: true },
+            { key: 'marca', label: 'Marca', requerido: false },
+            { key: 'modelo', label: 'Modelo', requerido: false },
+            { key: 'serie', label: 'Serie', requerido: false },
+            { key: 'ubicacion', label: 'Ubicación', requerido: false },
+            { key: 'estado', label: 'Estado', requerido: false },
+            { key: 'responsable', label: 'Responsable', requerido: false },
+            { key: 'observaciones', label: 'Observaciones', requerido: false }
+          ]}
         />
       )}
     </div>

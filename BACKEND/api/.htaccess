@@ -1,54 +1,32 @@
-# .htaccess en BACKEND/api/.htaccess
+# .htaccess para BACKEND/api/ - Configuración cPanel simple
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /api/
     
-    # Manejar OPTIONS requests primero
-    RewriteCond %{REQUEST_METHOD} OPTIONS
-    RewriteRule ^(.*)$ - [R=200,L]
-    
-    # Si es un archivo PHP existente, servirlo directamente
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteRule ^ - [L]
-    
-    # Si no termina en .php y existe un archivo .php correspondiente
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME}.php -f
-    RewriteRule ^([^.]+)$ $1.php [QSA,L]
-    
-    # Si la ruta no existe como archivo, redirigir a index.php para manejo de rutas
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php [QSA,L]
-</IfModule>
-
-# Configuración PHP
-<IfModule mod_php.c>
-    php_value upload_max_filesize 10M
-    php_value post_max_size 10M
-    php_value max_execution_time 300
-    php_value max_input_time 300
-</IfModule>
-
-# Headers específicos para el API
-<IfModule mod_headers.c>
-    # Siempre enviar headers CORS
+    # Headers CORS
     Header always set Access-Control-Allow-Origin "*"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-    Header always set Access-Control-Allow-Credentials "true"
-    Header always set Access-Control-Max-Age "3600"
     
-    # Cache para archivos estáticos
-    <FilesMatch "\.(php)$">
-        Header set Cache-Control "no-cache, no-store, must-revalidate"
-        Header set Pragma "no-cache"
-        Header set Expires "0"
-    </FilesMatch>
+    # Manejar OPTIONS requests
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ - [R=200,L]
+    
+    # Si es un archivo .php, ejecutarlo directamente
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^(.+\.php)$ $1 [L]
+    
+    # Si es un directorio, buscar index.php
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^(.*)$ $1/index.php [L]
+    
+    # Todo lo demás va a index.php
+    RewriteRule ^(.*)$ index.php [L]
 </IfModule>
 
-# Denegar acceso a archivos sensibles
-<FilesMatch "\.(env|log|ini|sql)$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
+# Si mod_rewrite no está disponible, denegar acceso directo
+<IfModule !mod_rewrite.c>
+    <FilesMatch ".*">
+        Order deny,allow
+        Deny from all
+    </FilesMatch>
+</IfModule>

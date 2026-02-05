@@ -16,7 +16,7 @@ const ProveedorForm = ({
     cuit: '',
     rubro: '',
     sector_servicio: '',
-    servicio: '',
+    servicio_especifico: '',
     direccion: '',
     localidad: '',
     provincia: '',
@@ -26,14 +26,16 @@ const ProveedorForm = ({
     contacto_cargo: '',
     estado: 'Activo',
     seguro_RT: false,
-    seguro_vida: false,
+    seguro_vida_personal: false,
+    poliza_RT: '',
+    vencimiento_poliza_RT: '',
     habilitacion_personal: '',
     vencimiento_habilitacion_personal: '',
     habilitacion_vehiculo: '',
     vencimiento_habilitacion_vehiculo: '',
-    tipo_proveedor: 'Monotributista',
+    tipo_proveedor: 'servicios',
     observaciones: '',
-    frecuencia_renovacion: 'mensual',
+    frecuencia_renovacion: 'anual',
     proximo_vencimiento: ''
   });
 
@@ -61,12 +63,13 @@ const ProveedorForm = ({
     'Compras'
   ];
 
+  // Los valores deben coincidir con el enum de la BD: 'terciarizado','servicios','insumos','equipamiento','otros'
   const tiposProveedor = [
-    'Monotributista',
-    'Responsable Inscripto',
-    'Sociedad Anónima',
-    'Sociedad de Responsabilidad Limitada',
-    'Cooperativa'
+    { value: 'terciarizado', label: 'Terciarizado' },
+    { value: 'servicios', label: 'Servicios' },
+    { value: 'insumos', label: 'Insumos' },
+    { value: 'equipamiento', label: 'Equipamiento' },
+    { value: 'otros', label: 'Otros' }
   ];
 
   const provincias = [
@@ -93,7 +96,7 @@ const ProveedorForm = ({
         cuit: proveedor.cuit || '',
         rubro: proveedor.rubro || '',
         sector_servicio: proveedor.sector_servicio || '',
-        servicio: proveedor.servicio || '',
+        servicio_especifico: proveedor.servicio_especifico || proveedor.servicio || '',
         direccion: proveedor.direccion || '',
         localidad: proveedor.localidad || '',
         provincia: proveedor.provincia || '',
@@ -103,14 +106,16 @@ const ProveedorForm = ({
         contacto_cargo: proveedor.contacto_cargo || '',
         estado: proveedor.estado || 'Activo',
         seguro_RT: proveedor.seguro_RT || false,
-        seguro_vida: proveedor.seguro_vida || false,
+        seguro_vida_personal: proveedor.seguro_vida_personal || false,
+        poliza_RT: proveedor.poliza_RT || '',
+        vencimiento_poliza_RT: proveedor.vencimiento_poliza_RT || '',
         habilitacion_personal: proveedor.habilitacion_personal || '',
         vencimiento_habilitacion_personal: proveedor.vencimiento_habilitacion_personal || '',
         habilitacion_vehiculo: proveedor.habilitacion_vehiculo || '',
         vencimiento_habilitacion_vehiculo: proveedor.vencimiento_habilitacion_vehiculo || '',
-        tipo_proveedor: proveedor.tipo_proveedor || 'Monotributista',
+        tipo_proveedor: proveedor.tipo_proveedor || 'servicios',
         observaciones: proveedor.observaciones || '',
-        frecuencia_renovacion: proveedor.frecuencia_renovacion || 'mensual',
+        frecuencia_renovacion: proveedor.frecuencia_renovacion || 'anual',
         proximo_vencimiento: proveedor.proximo_vencimiento || ''
       });
     }
@@ -128,9 +133,24 @@ const ProveedorForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Calcular próximo vencimiento si no está definido
+    // Convertir fechas vacías a null para evitar error de formato datetime
     const datosParaGuardar = { ...formData };
     
+    // Convertir campos de fecha vacíos a null
+    const dateFields = [
+      'vencimiento_poliza_RT',
+      'vencimiento_habilitacion_personal',
+      'vencimiento_habilitacion_vehiculo',
+      'proximo_vencimiento'
+    ];
+    
+    dateFields.forEach(field => {
+      if (!datosParaGuardar[field] || datosParaGuardar[field] === '') {
+        datosParaGuardar[field] = null;
+      }
+    });
+    
+    // Calcular próximo vencimiento si no está definido
     if (!datosParaGuardar.proximo_vencimiento) {
       const hoy = new Date();
       let meses = 1;
@@ -180,7 +200,7 @@ const ProveedorForm = ({
               disabled={readOnly || loading}
             >
               {tiposProveedor.map(tipo => (
-                <option key={tipo} value={tipo}>{tipo}</option>
+                <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
               ))}
             </select>
           </div>
@@ -278,8 +298,8 @@ const ProveedorForm = ({
           <input
             type="text"
             className="form-input"
-            name="servicio"
-            value={formData.servicio}
+            name="servicio_especifico"
+            value={formData.servicio_especifico}
             onChange={handleChange}
             disabled={readOnly || loading}
             placeholder="Ej: Vigilancia de Plantas, Transporte Especializado, etc."
@@ -439,8 +459,8 @@ const ProveedorForm = ({
           <label className="checkbox-label">
             <input
               type="checkbox"
-              name="seguro_vida"
-              checked={formData.seguro_vida}
+              name="seguro_vida_personal"
+              checked={formData.seguro_vida_personal}
               onChange={handleChange}
               disabled={readOnly || loading}
             />

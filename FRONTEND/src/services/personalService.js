@@ -53,7 +53,7 @@ const personalService = {
       };
 
       // Llamada al endpoint del backend REAL
-      const response = await api.get('/api/personal/get_personal.php', { params: queryParams });
+      const response = await api.get('/personal', { params: queryParams });
       
       PersonalLogger.debug(`Respuesta recibida:`, response.data);
       
@@ -73,7 +73,7 @@ const personalService = {
             }
           };
         }
-        
+          
         // Si solo es un array directo
         if (Array.isArray(response.data)) {
           PersonalLogger.info(`✅ Personal obtenido: ${response.data.length} registros`);
@@ -88,7 +88,7 @@ const personalService = {
             }
           };
         }
-        
+          
         // Si solo es un objeto individual
         PersonalLogger.info(`✅ Personal obtenido: objeto individual`);
         return {
@@ -103,7 +103,7 @@ const personalService = {
       
     } catch (error) {
       PersonalLogger.error('Error en getPersonal', {
-        endpoint: '/api/personal/get_personal.php',
+        endpoint: '/personal',
         error: error.message,
         status: error.response?.status,
         data: error.response?.data
@@ -131,7 +131,7 @@ const personalService = {
     try {
       PersonalLogger.debug(`Buscando personal: "${searchTerm}"`);
       
-      const response = await api.get('/api/personal/search_personal.php', {
+      const response = await api.get('/personal/search', {
         params: { q: searchTerm, limit }
       });
       
@@ -183,7 +183,7 @@ const personalService = {
       
       PersonalLogger.debug('Datos enviados al backend:', dataToSend);
       
-      const response = await api.post('/api/personal/create_personal.php', dataToSend);
+      const response = await api.post('/personal/create', dataToSend);
       
       if (response.data?.success || response.status === 201) {
         const successMessage = response.data?.message || 'Personal creado exitosamente';
@@ -256,7 +256,7 @@ const personalService = {
         activo: personalData.activo !== undefined ? personalData.activo : 1
       };
       
-      const response = await api.put('/api/personal/update_personal.php', dataToSend);
+      const response = await api.put('/personal/update', dataToSend);
       
       if (response.data?.success || response.status === 200) {
         const successMessage = response.data?.message || 'Personal actualizado exitosamente';
@@ -292,7 +292,7 @@ const personalService = {
     try {
       PersonalLogger.info(`Eliminando personal ID: ${id}`);
       
-      const response = await api.delete('/api/personal/delete_personal.php', { 
+      const response = await api.delete('/personal/delete', { 
         data: { id: id }
       });
       
@@ -346,7 +346,7 @@ const personalService = {
       formData.append('archivo', file);
       formData.append('descripcion', file.name);
       
-      const response = await api.post('/api/documentos.php', formData, {
+      const response = await api.post('/documentos', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -377,7 +377,7 @@ const personalService = {
     try {
       PersonalLogger.info(`Obteniendo documentos para personal ID: ${personalId}`);
       
-      const response = await api.get('/api/documentos.php', {
+      const response = await api.get('/documentos', {
         params: { personal_id: personalId }
       });
       
@@ -393,7 +393,36 @@ const personalService = {
       });
       throw error;
     }
+  },
+
+  // 🎯 CARGA MASIVA DE PERSONAL
+  cargaMasivaPersonal: async (data) => {
+    try {
+      PersonalLogger.info('Ejecutando carga masiva de personal', { registros: data.length });
+      
+      const response = await api.post('/personal/carga_masiva_personal', data);
+      
+      if (response.data?.success) {
+        PersonalLogger.info('✅ Carga masiva exitosa', response.data);
+        return {
+          success: true,
+          message: response.data.message,
+          resumen: response.data.resumen,
+          detalle_errores: response.data.detalle_errores
+        };
+      } else {
+        const errorMsg = response.data?.message || 'Error en carga masiva';
+        PersonalLogger.warn('Error en carga masiva:', response.data);
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      PersonalLogger.error('Error en carga masiva:', {
+        error: error.message,
+        status: error.response?.status
+      });
+      throw error;
+    }
   }
 };
 
-export { personalService, PersonalLogger };
+export default personalService;

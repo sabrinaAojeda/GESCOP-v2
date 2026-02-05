@@ -1,10 +1,6 @@
 <?php
 // BACKEND/api/personal/get_personal.php - VERSIÓN COMPLETA CORREGIDA
-header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
 // Manejar preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -12,8 +8,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
 
-include_once '../../config/database.php';
-include_once '../../models/Personal.php';
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+include_once $base_path . '/config/database.php';
+include_once $base_path . '/models/Personal.php';
 
 $database = new Database();
 $db = $database->getConnection();

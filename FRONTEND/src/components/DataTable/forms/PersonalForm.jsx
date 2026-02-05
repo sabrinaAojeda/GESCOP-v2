@@ -10,7 +10,7 @@ const PersonalForm = ({
   loading = false,
   readOnly = false 
 }) => {
-  // Estados del formulario
+  // Estados del formulario - COINCIDE CON LA BASE DE DATOS
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -19,9 +19,9 @@ const PersonalForm = ({
     legajo: '',
     telefono: '',
     email: '',
-    email_corporativo: '',
+    correo_corporativo: '',
     sector: '',
-    cargo: '',
+    puesto: '',
     fecha_ingreso: new Date().toISOString().split('T')[0],
     estado: 'Activo',
     rol: 'usuario',
@@ -29,18 +29,19 @@ const PersonalForm = ({
     fecha_nacimiento: '',
     tipo_contrato: 'Planta Permanente',
     
-    // Documentación
-    licencia_conducir: '',
+    // Documentación - COINCIDE CON BD
+    estado_licencia: '',
+    clase_licencia: '',
     vencimiento_licencia: '',
-    categoria_licencia: '',
-    certificados_capacitacion: '',
+    certificados: [],
+    capacitaciones: [],
     carnet_cargas_peligrosas: '',
     vencimiento_carnet: '',
     
     // Información adicional
     base_operativa: '',
-    habilitacion_tipo: '',
-    observaciones: ''
+    observaciones: '',
+    activo: 1
   });
   
   // Estados de validación
@@ -96,9 +97,23 @@ const PersonalForm = ({
     'F - Maquinaria'
   ];
   
-  // Inicializar formulario con datos existentes si estamos editando/viendo
+  // Inicializar formulario con datos existentes - MAPEA CORRECTAMENTE A BD
   useEffect(() => {
     if (personal) {
+      // Parsear JSON si viene como string
+      let certs = [];
+      let caps = [];
+      if (personal.certificados) {
+        certs = typeof personal.certificados === 'string' 
+          ? JSON.parse(personal.certificados) 
+          : personal.certificados;
+      }
+      if (personal.capacitaciones) {
+        caps = typeof personal.capacitaciones === 'string' 
+          ? JSON.parse(personal.capacitaciones) 
+          : personal.capacitaciones;
+      }
+      
       setFormData({
         nombre: personal.nombre || '',
         apellido: personal.apellido || '',
@@ -107,24 +122,29 @@ const PersonalForm = ({
         legajo: personal.legajo || '',
         telefono: personal.telefono || '',
         email: personal.email || '',
-        email_corporativo: personal.email_corporativo || personal.email || '',
+        correo_corporativo: personal.correo_corporativo || personal.email_corporativo || '',
         sector: personal.sector || '',
-        cargo: personal.cargo || personal.puesto || '',
+        puesto: personal.puesto || personal.cargo || '',
         fecha_ingreso: personal.fecha_ingreso || new Date().toISOString().split('T')[0],
         estado: personal.estado || 'Activo',
-        rol: personal.rol || 'usuario',
+        rol: personal.rol_sistema || personal.rol || 'usuario',
         direccion: personal.direccion || '',
         fecha_nacimiento: personal.fecha_nacimiento || '',
         tipo_contrato: personal.tipo_contrato || 'Planta Permanente',
-        licencia_conducir: personal.licencia_conducir || '',
+        
+        // Documentación - Mapea correctamente
+        estado_licencia: personal.estado_licencia || '',
+        clase_licencia: personal.clase_licencia || personal.categoria_licencia || '',
         vencimiento_licencia: personal.vencimiento_licencia || '',
-        categoria_licencia: personal.categoria_licencia || '',
-        certificados_capacitacion: personal.certificados_capacitacion || '',
+        certificados: certs,
+        capacitaciones: caps,
         carnet_cargas_peligrosas: personal.carnet_cargas_peligrosas || '',
         vencimiento_carnet: personal.vencimiento_carnet || '',
+        
+        // Información adicional
         base_operativa: personal.base_operativa || '',
-        habilitacion_tipo: personal.habilitacion_tipo || '',
-        observaciones: personal.observaciones || ''
+        observaciones: personal.observaciones || '',
+        activo: personal.activo !== undefined ? personal.activo : 1
       });
     }
   }, [personal]);
@@ -166,8 +186,6 @@ const PersonalForm = ({
       case 'email_corporativo':
         if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
           newErrors[name] = 'Email corporativo inválido';
-        } else if (!value.includes('@copesa-ar.com') && !value.includes('@copesa.com')) {
-          newErrors[name] = 'Debe ser un email corporativo COPESA';
         } else {
           delete newErrors[name];
         }
@@ -203,7 +221,7 @@ const PersonalForm = ({
     if (!formData.apellido.trim()) newErrors.apellido = 'Apellido es requerido';
     if (!formData.dni.trim()) newErrors.dni = 'DNI es requerido';
     if (!formData.sector.trim()) newErrors.sector = 'Sector es requerido';
-    if (!formData.cargo.trim()) newErrors.cargo = 'Cargo es requerido';
+    if (!formData.puesto.trim()) newErrors.puesto = 'Cargo/Puesto es requerido'; // CORREGIDO: de cargo a puesto
     
     // Validaciones específicas
     if (formData.dni && !/^\d{7,8}$/.test(formData.dni.replace(/\D/g, ''))) {
@@ -212,10 +230,6 @@ const PersonalForm = ({
     
     if (formData.email_corporativo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_corporativo)) {
       newErrors.email_corporativo = 'Email corporativo inválido';
-    } else if (formData.email_corporativo && 
-              !formData.email_corporativo.includes('@copesa-ar.com') && 
-              !formData.email_corporativo.includes('@copesa.com')) {
-      newErrors.email_corporativo = 'Debe ser un email corporativo COPESA';
     }
     
     setErrors(newErrors);
@@ -260,14 +274,33 @@ const PersonalForm = ({
       return;
     }
     
-    // Formatear datos para enviar al backend
+    // Formatear datos para enviar al backend - COINCIDE CON LA BASE DE DATOS
     const dataToSend = {
-      ...formData,
+      nombre: formData.nombre,
+      apellido: formData.apellido,
       dni: formData.dni.replace(/\D/g, ''),
       cuil: formData.cuil.replace(/\D/g, ''),
       telefono: formData.telefono.replace(/\D/g, ''),
-      puesto: formData.cargo, // Para compatibilidad
-      rol_sistema: formData.rol
+      email: formData.email,
+      correo_corporativo: formData.correo_corporativo,
+      sector: formData.sector,
+      puesto: formData.puesto,
+      rol_sistema: formData.rol,
+      fecha_ingreso: formData.fecha_ingreso,
+      fecha_nacimiento: formData.fecha_nacimiento || null,
+      direccion: formData.direccion,
+      tipo_contrato: formData.tipo_contrato,
+      estado_licencia: formData.estado_licencia,
+      clase_licencia: formData.clase_licencia,
+      vencimiento_licencia: formData.vencimiento_licencia || null,
+      certificados: JSON.stringify(formData.certificados),
+      capacitaciones: JSON.stringify(formData.capacitaciones),
+      carnet_cargas_peligrosas: formData.carnet_cargas_peligrosas,
+      vencimiento_carnet: formData.vencimiento_carnet || null,
+      base_operativa: formData.base_operativa,
+      observaciones: formData.observaciones,
+      activo: formData.activo,
+      legajo: formData.legajo
     };
     
     onSave(dataToSend);
@@ -424,16 +457,16 @@ const PersonalForm = ({
             <label className="form-label required">Cargo/Puesto</label>
             <input
               type="text"
-              className={`form-input ${touched.cargo && errors.cargo ? 'error' : ''}`}
-              name="cargo"
-              value={formData.cargo}
+              className={`form-input ${touched.puesto && errors.puesto ? 'error' : ''}`}
+              name="puesto"
+              value={formData.puesto}
               onChange={handleChange}
               onBlur={handleBlur}
               disabled={readOnly || loading}
               placeholder="Ej: Operador, Supervisor, etc."
               required
             />
-            {renderFieldError('cargo')}
+            {renderFieldError('puesto')}
           </div>
         </div>
         
@@ -582,11 +615,10 @@ const PersonalForm = ({
             onChange={handleChange}
             onBlur={handleBlur}
             disabled={readOnly || loading}
-            placeholder="nombre.apellido@copesa-ar.com"
-            required
+            placeholder="email@ejemplo.com"
           />
           {renderFieldError('email_corporativo')}
-          <small className="helper-text">Debe ser un email corporativo de COPESA</small>
+          <small className="helper-text">Email corporativo (opcional)</small>
         </div>
       </div>
       
@@ -612,8 +644,8 @@ const PersonalForm = ({
             <label className="form-label">Categoría</label>
             <select
               className="form-input"
-              name="categoria_licencia"
-              value={formData.categoria_licencia}
+              name="clase_licencia"
+              value={formData.clase_licencia}
               onChange={handleChange}
               disabled={readOnly || loading}
             >

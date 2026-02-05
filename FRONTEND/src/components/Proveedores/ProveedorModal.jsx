@@ -24,6 +24,10 @@ const ProveedorModal = ({
     }
   };
 
+  const handleCancel = () => {
+    onClose();
+  };
+
   const handleSave = (formData) => {
     onSave(formData);
   };
@@ -31,7 +35,7 @@ const ProveedorModal = ({
   return (
     <GenericModal
       title={getTitle()}
-      onClose={onCancel}
+      onClose={handleCancel}
       size="large"
       loading={loading}
     >
@@ -41,7 +45,7 @@ const ProveedorModal = ({
           onSubmit={handleSave}
           mode={mode}
           loading={loading}
-          onCancel={onClose}
+          onCancel={handleCancel}
         />
       </div>
     </GenericModal>

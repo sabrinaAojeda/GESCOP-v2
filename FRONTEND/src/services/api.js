@@ -1,10 +1,10 @@
-// src/services/api.js - VERSIÓN ADAPTADA A TU BACKEND
+// FRONTEND/src/services/api.js - VERSIÓN CORREGIDA CON /api
 import axios from 'axios';
 
-// 🎯 URL BASE CORRECTA para tu estructura
-const API_URL = 'https://gescop.vexy.host'; // Sin /api al final
+// 🎯 URL BASE - Lee de variable de entorno o usa valor por defecto
+const API_URL = import.meta.env.VITE_API_URL || 'https://gescop.vexy.host/api';
 
-// Crear instancia de axios con configuración optimizada
+// Crear instancia de axios
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -12,27 +12,27 @@ const api = axios.create({
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest'
   },
-  timeout: 15000,
+  timeout: 30000, // 30 segundos timeout
   withCredentials: false
 });
 
-// Interceptor para requests
+// 🎯 INTERCEPTOR DE REQUEST CON LOGGING MEJORADO
 api.interceptors.request.use(
   (config) => {
-    // Debugging detallado
     const method = config.method?.toUpperCase();
-    const url = config.baseURL + config.url;
-    const params = config.params || {};
+    const url = config.url;
+    const fullUrl = config.baseURL + url;
     
     console.group(`🚀 [API REQUEST] ${method} ${url}`);
-    console.log('Params:', params);
-    console.log('Data:', config.data);
+    console.log('URL Completa:', fullUrl);
+    console.log('Parámetros:', config.params || 'Sin parámetros');
+    console.log('Datos:', config.data || 'Sin datos');
     console.groupEnd();
     
-    // Evitar caché para GET requests
-    if (method === 'GET') {
+    // Añadir timestamp para evitar caché
+    if (method === 'GET' && config.params) {
       config.params = {
-        ...params,
+        ...config.params,
         _t: Date.now()
       };
     }
@@ -40,25 +40,25 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ [API] Error en request:', error);
+    console.error('❌ [API REQUEST ERROR]', error);
     return Promise.reject(error);
   }
 );
 
-// Interceptor para responses
+// 🎯 INTERCEPTOR DE RESPONSE CON MANEJO DE ERRORES MEJORADO
 api.interceptors.response.use(
   (response) => {
     const url = response.config.url;
     const status = response.status;
     
-    console.log(`✅ [API] Response ${status}: ${url}`);
+    console.log(`✅ [API RESPONSE ${status}] ${url}`);
     
-    // Si la respuesta tiene formato incorrecto, normalizarla
+    // Validar que la respuesta sea JSON válido
     if (response.data && typeof response.data === 'string') {
       try {
         response.data = JSON.parse(response.data);
       } catch (e) {
-        // Si no es JSON válido, crear estructura estándar
+        console.warn(`⚠️ [API] Respuesta no es JSON válido:`, response.data);
         response.data = {
           success: true,
           message: response.data,
@@ -70,62 +70,79 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    const url = error.config?.url || 'unknown';
+    const url = error.config?.url || 'Desconocido';
     const status = error.response?.status;
     const message = error.message;
     
     console.group(`❌ [API ERROR] ${url}`);
-    console.log('Status:', status);
-    console.log('Message:', message);
-    console.log('Response:', error.response?.data);
-    console.log('Full Error:', error);
+    console.log('Estado:', status);
+    console.log('Mensaje:', message);
+    console.log('Respuesta:', error.response?.data);
+    console.log('Error completo:', error);
     console.groupEnd();
     
-    // Crear error amigable
-    let userMessage = 'Error de conexión';
+    // 🎯 CREAR ERROR ESTRUCTURADO
+    const structuredError = {
+      message: '',
+      status: status,
+      original: error,
+      data: error.response?.data
+    };
     
     if (error.code === 'ECONNABORTED') {
-      userMessage = 'Tiempo de espera agotado. El servidor está tardando demasiado.';
-    } else if (message.includes('Network')) {
-      userMessage = 'Error de red. Verifique su conexión a internet.';
+      structuredError.message = 'Tiempo de espera agotado. El servidor está tardando demasiado.';
+    } else if (message.includes('Network Error')) {
+      structuredError.message = 'Error de red. Verifique su conexión a internet.';
     } else if (status === 404) {
-      userMessage = 'Recurso no encontrado.';
+      structuredError.message = 'Recurso no encontrado.';
     } else if (status === 500) {
-      userMessage = 'Error interno del servidor.';
-    } else if (error.response?.data?.error) {
-      userMessage = error.response.data.error;
+      structuredError.message = 'Error interno del servidor.';
     } else if (error.response?.data?.message) {
-      userMessage = error.response.data.message;
+      structuredError.message = error.response.data.message;
+    } else if (error.response?.data?.error) {
+      structuredError.message = error.response.data.error;
+    } else {
+      structuredError.message = 'Error de conexión con el servidor.';
     }
     
-    // Crear error estructurado
-    const structuredError = new Error(userMessage);
-    structuredError.status = status;
-    structuredError.original = error;
-    structuredError.response = error.response?.data;
-    
-    return Promise.reject(structuredError);
+    throw new Error(structuredError.message);
   }
 );
 
-// Función para debug del API
-export const debugAPI = () => {
-  console.log('🔧 [API DEBUG] Configuración:', {
-    baseURL: api.defaults.baseURL,
-    timeout: api.defaults.timeout,
-    headers: api.defaults.headers.common
-  });
+// 🎯 FUNCIÓN PARA TESTEAR CONEXIÓN
+export const testAPIConnection = async () => {
+  console.log('🔧 [API TEST] Probando conexión...');
   
-  // Probar conexión básica
-  return api.get('/api/test')
-    .then(response => {
-      console.log('✅ API Conectado:', response.data);
-      return response.data;
-    })
-    .catch(error => {
-      console.error('❌ API No disponible:', error.message);
-      return { success: false, error: error.message };
-    });
+  try {
+    const response = await api.get('/test');
+    console.log('✅ [API TEST] Conexión exitosa:', response.data);
+    return {
+      success: true,
+      data: response.data,
+      message: 'API conectado correctamente'
+    };
+  } catch (error) {
+    console.error('❌ [API TEST] Error de conexión:', error.message);
+    
+    // Intentar conexión directa
+    try {
+      const directTest = await axios.get('https://gescop.vexy.host/api/test', {
+        timeout: 5000
+      });
+      console.log('✅ [API DIRECT TEST] Conexión directa exitosa');
+      return {
+        success: true,
+        data: directTest.data,
+        message: 'API conectado (prueba directa)'
+      };
+    } catch (directError) {
+      return {
+        success: false,
+        error: directError.message,
+        message: 'No se pudo conectar al API. Verifique: 1) URL correcta, 2) Servidor activo, 3) CORS configurado.'
+      };
+    }
+  }
 };
 
 export default api;

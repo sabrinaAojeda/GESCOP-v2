@@ -62,7 +62,7 @@ const Sidebar = ({ onClose }) => {
             }}
           />
           <div className="logo-text">
-            <div className="logo-title">  GESCOP</div>
+            <div className="logo-title">GESCOP</div>
           </div>
         </div>
         
@@ -103,20 +103,20 @@ const Sidebar = ({ onClose }) => {
           
           <div className={`submenu ${flotaExpanded ? 'expanded' : ''}`}>
             <Link 
-              to="/flota/rodado-maquinarias" 
-              className={`submenu-item ${isActive('/flota/rodado-maquinarias') ? 'active' : ''}`}
+              to="/flota/flota-servicio" 
+              className={`submenu-item ${isActive('/flota/flota-servicio') ? 'active' : ''}`}
               onClick={handleNavClick}
             >
               <span className="submenu-icon">🚛</span>
-              <span>Rodado y Maquinarias</span>
+              <span>Flota en Servicio</span>
             </Link>
             <Link 
-              to="/flota/listado-vehiculos" 
-              className={`submenu-item ${isActive('/flota/listado-vehiculos') ? 'active' : ''}`}
+              to="/flota/historial-vehicular" 
+              className={`submenu-item ${isActive('/flota/historial-vehicular') ? 'active' : ''}`}
               onClick={handleNavClick}
             >
               <span className="submenu-icon">📋</span>
-              <span>Listado de Vehículos</span>
+              <span>Historial Vehicular</span>
             </Link>
             <Link 
               to="/flota/vehiculos-vendidos" 
@@ -165,7 +165,7 @@ const Sidebar = ({ onClose }) => {
         </div>
 
         <div className="nav-section">
-          <div className="nav-title">ADMINITSTRACION DEL SISTEMA</div>
+          <div className="nav-title">ADMINISTRACIÓN DEL SISTEMA</div>
           
           <div 
             className={`nav-item has-submenu ${isHerramientasActive() ? 'active' : ''} ${herramientasExpanded ? 'expanded' : ''}`}

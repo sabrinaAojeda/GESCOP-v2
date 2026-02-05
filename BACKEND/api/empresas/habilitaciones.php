@@ -1,11 +1,10 @@
 <?php
-header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers,Content-Type,Access-Control-Allow-Methods, Authorization, X-Requested-With');
 
-require_once '../config/conexion.php';
-require_once '../models/Habilitacion.php';
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/models/Habilitacion.php';
 
 class HabilitacionesController {
     private $habilitacion;
@@ -98,11 +97,14 @@ class HabilitacionesController {
     }
 
     // POST /habilitaciones
-    public function crearHabilitacion() {
+        public function crearHabilitacion() {
         try {
+            // Usar paths absolutos para uploads
+            $base_path = dirname(__FILE__, 3); // public_html/
+            
             // Verificar si es upload de archivo
             if (isset($_FILES['archivo'])) {
-                $uploadDir = '../../../uploads/habilitaciones/';
+                $uploadDir = $base_path . '/../../uploads/habilitaciones/';
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0777, true);
                 }
@@ -208,7 +210,7 @@ class HabilitacionesController {
 
         // Eliminar archivo físico si existe
         if (!empty($this->habilitacion->archivo)) {
-            $filePath = '../../../uploads/habilitaciones/' . $this->habilitacion->archivo;
+            $filePath = $base_path . '/../../uploads/habilitaciones/' . $this->habilitacion->archivo;
             if (file_exists($filePath)) {
                 unlink($filePath);
             }

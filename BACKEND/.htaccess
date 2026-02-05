@@ -1,0 +1,29 @@
+# .htaccess para BACKEND/ - Compatible con Vercel y Apache tradicional
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Para Apache tradicional
+    RewriteBase /BACKEND/
+    
+    # Headers CORS
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+
+    # Manejar OPTIONS requests
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ - [R=200,L]
+
+    # Si es un archivo o directorio real, servirlo directamente
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Rutas del API - enrutar /BACKEND/api/* a api/index.php
+    RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+</IfModule>
+
+# PHP settings - HABILITAR errores para diagnóstico
+<IfModule mod_php.c>
+    php_flag display_errors On
+    php_value error_reporting E_ALL
+</IfModule>

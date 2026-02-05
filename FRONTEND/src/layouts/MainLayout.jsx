@@ -1,5 +1,5 @@
-// src/layouts/MainLayout.jsx - VERSIÓN CORREGIDA
-import React, { useState, useEffect } from 'react';
+// src/layouts/MainLayout.jsx - VERSIÓN OPTIMIZADA
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar/Sidebar';
 import Header from '../components/Header/Header';
@@ -10,36 +10,34 @@ const MainLayout = () => {
   const responsive = useResponsive();
   const [sidebarOpen, setSidebarOpen] = useState(responsive.shouldShowSidebar());
 
-  // Efecto para manejar cambios en responsive
-  useEffect(() => {
-    // Si estamos en desktop y sidebar está cerrada, abrirla
-    if (responsive.shouldShowSidebar() && !sidebarOpen) {
-      setSidebarOpen(true);
-    }
-    // Si estamos en móvil y sidebar está abierta, cerrarla
-    else if (responsive.shouldShowHamburgerMenu() && sidebarOpen) {
-      setSidebarOpen(false);
-    }
-  }, [responsive, sidebarOpen]);
+  // Usar callbacks memoizados para evitar re-renderizados
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen(prev => !prev);
+  }, []);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const closeSidebar = () => {
+  const closeSidebar = useCallback(() => {
     if (responsive.shouldShowHamburgerMenu()) {
       setSidebarOpen(false);
     }
-  };
+  }, [responsive.shouldShowHamburgerMenu]);
+
+  // Efecto para manejar cambios en responsive
+  useEffect(() => {
+    if (responsive.shouldShowSidebar() && !sidebarOpen) {
+      setSidebarOpen(true);
+    } else if (responsive.shouldShowHamburgerMenu() && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  }, [responsive, sidebarOpen, responsive.shouldShowSidebar, responsive.shouldShowHamburgerMenu]);
 
   return (
     <div className="app-container">
-      {/* Overlay para móviles - SOLO en dispositivos móviles REALES */}
+      {/* Overlay para móviles */}
       {responsive.shouldShowHamburgerMenu() && sidebarOpen && (
         <div className="sidebar-overlay" onClick={closeSidebar}></div>
       )}
 
-      {/* Sidebar - VISIBLE según reglas */}
+      {/* Sidebar */}
       <div 
         className={`sidebar ${sidebarOpen ? 'open' : 'closed'} ${
           responsive.shouldShowHamburgerMenu() ? 'mobile' : 'desktop'

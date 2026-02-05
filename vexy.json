@@ -13,7 +13,131 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "/api/flota/vehiculos",
+      "dest": "/BACKEND/api/flota/vehiculos.php"
+    },
+    {
+      "src": "/api/flota/vehiculos_vendidos",
+      "dest": "/BACKEND/api/flota/vehiculos_vendidos.php"
+    },
+    {
+      "src": "/api/flota/equipamientos",
+      "dest": "/BACKEND/api/flota/equipamientos.php"
+    },
+    {
+      "src": "/api/personal$",
+      "dest": "/BACKEND/api/personal/get_personal.php"
+    },
+    {
+      "src": "/api/personal/search",
+      "dest": "/BACKEND/api/personal/search_personal.php"
+    },
+    {
+      "src": "/api/personal/create",
+      "dest": "/BACKEND/api/personal/create_personal.php"
+    },
+    {
+      "src": "/api/personal/update",
+      "dest": "/BACKEND/api/personal/update_personal.php"
+    },
+    {
+      "src": "/api/personal/delete",
+      "dest": "/BACKEND/api/personal/delete_personal.php"
+    },
+    {
+      "src": "/api/proveedores",
+      "dest": "/BACKEND/api/proveedores/proveedores.php"
+    },
+    {
+      "src": "/api/proveedores/search",
+      "dest": "/BACKEND/api/proveedores/search_proveedor.php"
+    },
+    {
+      "src": "/api/proveedores/create",
+      "dest": "/BACKEND/api/proveedores/create_proveedor.php"
+    },
+    {
+      "src": "/api/proveedores/update",
+      "dest": "/BACKEND/api/proveedores/update_proveedor.php"
+    },
+    {
+      "src": "/api/proveedores/delete",
+      "dest": "/BACKEND/api/proveedores/delete_proveedor.php"
+    },
+    {
+      "src": "/api/proveedores/documentos",
+      "dest": "/BACKEND/api/proveedores/documentos_proveedor.php"
+    },
+    {
+      "src": "/api/proveedores/personal",
+      "dest": "/BACKEND/api/proveedores/proveedor_personal.php"
+    },
+    {
+      "src": "/api/proveedores/servicios",
+      "dest": "/BACKEND/api/proveedores/servicios_proveedores.php"
+    },
+    {
+      "src": "/api/dashboard/estadisticas",
+      "dest": "/BACKEND/api/dashboard/estadisticas.php"
+    },
+    {
+      "src": "/api/dashboard/resumen",
+      "dest": "/BACKEND/api/dashboard/resumen.php"
+    },
+    {
+      "src": "/api/dashboard/alertas_dashboard",
+      "dest": "/BACKEND/api/dashboard/alertas_dashboard.php"
+    },
+    {
+      "src": "/api/dashboard/vencimientos",
+      "dest": "/BACKEND/api/dashboard/vencimientos.php"
+    },
+    {
+      "src": "/api/empresas/sedes",
+      "dest": "/BACKEND/api/empresas/sedes.php"
+    },
+    {
+      "src": "/api/empresas/habilitaciones",
+      "dest": "/BACKEND/api/empresas/habilitaciones.php"
+    },
+    {
+      "src": "/api/empresas/bases_operativas",
+      "dest": "/BACKEND/api/empresas/bases_operativas.php"
+    },
+    {
+      "src": "/api/empresas/servicios",
+      "dest": "/BACKEND/api/empresas/servicios.php"
+    },
+    {
+      "src": "/api/herramientas/configuracion",
+      "dest": "/BACKEND/api/herramientas/configuracion.php"
+    },
+    {
+      "src": "/api/herramientas/reportes",
+      "dest": "/BACKEND/api/herramientas/reportes.php"
+    },
+    {
+      "src": "/api/herramientas/alertas",
+      "dest": "/BACKEND/api/herramientas/alertas.php"
+    },
+    {
+      "src": "/api/documentos",
+      "dest": "/BACKEND/api/documentos.php"
+    },
+    {
+      "src": "/api/auth",
+      "dest": "/BACKEND/api/auth.php"
+    },
+    {
+      "src": "/api/test",
+      "dest": "/BACKEND/api/test.php"
+    },
+    {
+      "src": "/api/parametros",
+      "dest": "/BACKEND/api/parametros.php"
+    },
+    {
+      "src": "/(.*\\.php)",
       "dest": "/BACKEND/api/$1"
     },
     {
@@ -23,7 +147,7 @@
   ],
   "env": {
     "MYSQL_HOST": "@mysql_host",
-    "MYSQL_USER": "@mysql_user", 
+    "MYSQL_USER": "@mysql_user",
     "MYSQL_PASSWORD": "@mysql_password",
     "MYSQL_DATABASE": "@mysql_database"
   }

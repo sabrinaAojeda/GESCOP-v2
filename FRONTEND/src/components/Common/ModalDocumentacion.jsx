@@ -157,9 +157,24 @@ const ModalDocumentacion = ({
   
   // Descargar documento
   const handleDownload = useCallback((documento) => {
-    // En una implementación real, esto descargaría el archivo del servidor
-    alert(`Descargando: ${documento.nombre}`);
-    // window.open(documento.url, '_blank');
+    if (!documento.ruta && !documento.archivo) {
+      alert('❌ No hay archivo disponible para descargar');
+      return;
+    }
+    
+    // Construir URL de descarga desde la API
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://gescop.vexy.host/api';
+    const fileName = documento.ruta || documento.archivo;
+    const downloadUrl = `${apiUrl}/download.php?file=${encodeURIComponent(fileName)}`;
+    
+    // Intentar descargar directamente
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', documento.nombre || fileName);
+    link.setAttribute('target', '_blank');
+    
+    // Si no funciona el download directo, abrir en nueva pestaña
+    window.open(downloadUrl, '_blank');
   }, []);
   
   // Formatear tamaño de archivo

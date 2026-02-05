@@ -3,9 +3,10 @@ import './RodadoTable.css'
 
 const RodadoTable = ({ 
   vehiculos = [], 
-  columnasVisibles = {}, 
+  columnasVisibles = {},
   onVerVehiculo,
-  // Eliminar props no utilizadas o implementarlas
+  onEditarVehiculo,
+  onDocumentacionVehiculo,
   onSearch,
   onSectorFilter,
   onEstadoFilter,
@@ -246,8 +247,20 @@ const RodadoTable = ({
                       >
                         👁️
                       </button>
-                      <button className="icon-btn" title="Editar">✏️</button>
-                      <button className="icon-btn" title="Documentación">📄</button>
+                      <button 
+                        className="icon-btn" 
+                        title="Editar"
+                        onClick={() => onEditarVehiculo && onEditarVehiculo(vehiculo)}
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        className="icon-btn" 
+                        title="Documentación"
+                        onClick={() => onDocumentacionVehiculo && onDocumentacionVehiculo(vehiculo)}
+                      >
+                        📄
+                      </button>
                     </div>
                   </td>
                 </tr>

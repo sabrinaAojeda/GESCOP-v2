@@ -18,6 +18,103 @@
     --gray-900: #111827;
 }
 
+/* Estilos globales para botones de acción */
+.icon-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    padding: 6px !important;
+    margin: 0 2px !important;
+    border-radius: 6px !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    transition: all 0.2s ease !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.icon-btn:hover {
+    transform: scale(1.15) !important;
+    background: rgba(0, 0, 0, 0.08) !important;
+}
+
+.icon-btn:active {
+    transform: scale(0.95) !important;
+}
+
+.icon-btn:focus {
+    outline: 2px solid #4299e1 !important;
+    outline-offset: 2px !important;
+}
+
+/* Colores específicos por acción */
+.icon-btn[title*="Ver"] {
+    color: #4299e1 !important;
+}
+
+.icon-btn[title*="Ver"]:hover {
+    background: rgba(66, 153, 225, 0.15) !important;
+}
+
+.icon-btn[title*="Edit"], 
+.icon-btn[title*="Edita"] {
+    color: #ED8936 !important;
+}
+
+.icon-btn[title*="Edit"]:hover,
+.icon-btn[title*="Edita"]:hover {
+    background: rgba(237, 137, 54, 0.15) !important;
+}
+
+.icon-btn[title*="Doc"],
+.icon-btn[title*="doc"] {
+    color: #38A169 !important;
+}
+
+.icon-btn[title*="Doc"]:hover,
+.icon-btn[title*="doc"]:hover {
+    background: rgba(56, 161, 105, 0.15) !important;
+}
+
+.icon-btn[title*="Elim"],
+.icon-btn[title*="elim"],
+.icon-btn[title*="Delete"] {
+    color: #E53E3E !important;
+}
+
+.icon-btn[title*="Elim"]:hover,
+.icon-btn[title*="elim"]:hover,
+.icon-btn[title*="Delete"]:hover {
+    background: rgba(229, 62, 62, 0.15) !important;
+}
+
+/* Asegurar que el contenedor de acciones no bloquee */
+.action-buttons {
+    display: flex !important;
+    gap: 4px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    pointer-events: auto !important;
+}
+
+/* Asegurar que td de acciones sea interactivo */
+td.actions-cell,
+td.col-acciones,
+td:last-child:not(:first-child) {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+
 * {
     margin: 0;
     padding: 0;

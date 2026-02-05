@@ -1,13 +1,11 @@
 <?php
 // BACKEND/api/proveedores/search_proveedor.php
-header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
-include_once '../../config/database.php';
-include_once '../../models/Proveedor.php';
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+require_once $base_path . '/config/database.php';
+include_once $base_path . '/models/Proveedor.php';
 
 $database = new Database();
 $db = $database->getConnection();

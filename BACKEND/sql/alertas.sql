@@ -1,0 +1,25 @@
+-- Crear tabla alertas para el sistema GESCOP
+CREATE TABLE IF NOT EXISTS alertas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(50) NOT NULL COMMENT 'Tipo de alerta: vtv, seguro, licencia, habilitacion, mantenimiento',
+    categoria VARCHAR(100) NOT NULL COMMENT 'Categoría: Vehículos, Personal, Proveedores, Sedes',
+    prioridad ENUM('critico', 'alto', 'medio', 'bajo') NOT NULL DEFAULT 'medio',
+    titulo VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    elemento_tipo VARCHAR(50) COMMENT 'Tipo de entidad: vehiculo, personal, proveedor, sede',
+    elemento_id INT COMMENT 'ID de la entidad relacionada',
+    elemento_nombre VARCHAR(255) COMMENT 'Nombre identificador del elemento',
+    fecha_generacion DATE NOT NULL DEFAULT (CURRENT_DATE),
+    fecha_vencimiento DATE COMMENT 'Fecha de vencimiento asociada',
+    estado ENUM('pendiente', 'en_proceso', 'resuelta', 'archivada') NOT NULL DEFAULT 'pendiente',
+    usuario_creacion INT COMMENT 'ID del usuario que crea la alerta',
+    observaciones TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_tipo (tipo),
+    INDEX idx_categoria (categoria),
+    INDEX idx_prioridad (prioridad),
+    INDEX idx_estado (estado),
+    INDEX idx_fecha_vencimiento (fecha_vencimiento),
+    INDEX idx_elemento (elemento_tipo, elemento_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

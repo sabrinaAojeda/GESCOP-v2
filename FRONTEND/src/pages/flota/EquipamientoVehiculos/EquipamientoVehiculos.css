@@ -437,3 +437,15 @@
   color: #991b1b;
   border-left: 4px solid #dc2626;
 }
+/orialVehicular.css* ASEGURAR QUE LOS BOTONES SIEMPRE SEAN CLICKEABLES */
+.icon-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+.actions-cell {
+  pointer-events: auto !important;
+  z-index: 5 !important;
+}

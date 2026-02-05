@@ -1,56 +1,39 @@
 <?php
-// ERROR REPORTING COMPLETO AL INICIO
-if ($_ENV['ENVIRONMENT'] !== 'production') {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-}
-ini_set('log_errors', 1);
+// BACKEND/api/flota/vehiculos.php - CORREGIDO COMPLETO
 
-// HEADERS - YA CONFIGURADOS EN index.php, pero se repiten por seguridad
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+// Headers CORS
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
 
-// Manejar preflight OPTIONS
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
-    exit();
+    exit(0);
 }
 
-// LOG PARA DEBUG
-error_log("🚀 vehiculos.php ejecutándose. Método: " . $_SERVER['REQUEST_METHOD']);
+header('Content-Type: application/json; charset=UTF-8');
 
-// INCLUSIÓN DE ARCHIVOS CON RUTAS RELATIVAS - MÁS CONFIABLES
-// Usar dirname para obtener rutas relativas
-$base_path = dirname(__DIR__) . '/';
-require_once $base_path . '../config/database.php';
-require_once $base_path . '../models/Vehiculo.php';
-
-function sendResponse($success, $message = '', $data = null, $httpCode = 200) {
-    http_response_code($httpCode);
-    echo json_encode([
-        'success' => $success,
-        'message' => $message,
-        'data' => $data
-    ]);
-    exit();
-}
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/models/Vehiculo.php';
 
 try {
-    // INICIALIZAR DATABASE Y MODELO
     $database = new Database();
     $db = $database->getConnection();
-    
-    if (!$db) {
-        throw new Exception("No se pudo conectar a la base de datos");
-    }
-    
     $vehiculo = new Vehiculo($db);
     $method = $_SERVER['REQUEST_METHOD'];
 
-    error_log("📝 Método HTTP: $method");
+    // Función helper para respuestas
+    function jsonResponse($success, $message, $data = null, $code = 200) {
+        http_response_code($code);
+        $response = ['success' => $success, 'message' => $message];
+        if ($data !== null) {
+            $response['data'] = $data;
+        }
+        echo json_encode($response);
+        exit;
+    }
 
     switch($method) {
         case 'GET':
@@ -62,52 +45,46 @@ try {
             $limit = (int)($_GET['limit'] ?? 50);
             $interno = $_GET['interno'] ?? null;
 
-            error_log("🔍 Parámetros GET: search=$search, sector=$sector, estado=$estado, tipo=$tipo, page=$page, limit=$limit");
-
             if($interno) {
-                error_log("🔎 Buscando vehículo específico: $interno");
                 $vehiculo->interno = $interno;
                 if($vehiculo->leerUno()) {
-                    sendResponse(true, 'Vehículo encontrado', [
-                        "interno" => $vehiculo->interno,
-                        "año" => $vehiculo->año,
-                        "dominio" => $vehiculo->dominio,
-                        "modelo" => $vehiculo->modelo,
-                        "eq_incorporado" => $vehiculo->eq_incorporado,
-                        "sector" => $vehiculo->sector,
-                        "chofer" => $vehiculo->chofer,
-                        "estado" => $vehiculo->estado,
-                        "observaciones" => $vehiculo->observaciones,
-                        "vtv_vencimiento" => $vehiculo->vtv_vencimiento,
-                        "vtv_estado" => $vehiculo->vtv_estado,
-                        "hab_vencimiento" => $vehiculo->hab_vencimiento,
-                        "hab_estado" => $vehiculo->hab_estado,
-                        "seguro_vencimiento" => $vehiculo->seguro_vencimiento,
-                        "tipo" => $vehiculo->tipo
+                    jsonResponse(true, 'Vehículo encontrado', [
+                        'interno' => $vehiculo->interno,
+                        'año' => $vehiculo->año,
+                        'dominio' => $vehiculo->dominio,
+                        'modelo' => $vehiculo->modelo,
+                        'eq_incorporado' => $vehiculo->eq_incorporado,
+                        'sector' => $vehiculo->sector,
+                        'chofer' => $vehiculo->chofer,
+                        'estado' => $vehiculo->estado,
+                        'observaciones' => $vehiculo->observaciones,
+                        'vtv_vencimiento' => $vehiculo->vtv_vencimiento,
+                        'vtv_estado' => $vehiculo->vtv_estado,
+                        'hab_vencimiento' => $vehiculo->hab_vencimiento,
+                        'hab_estado' => $vehiculo->hab_estado,
+                        'seguro_vencimiento' => $vehiculo->seguro_vencimiento,
+                        'seguro_estado' => $vehiculo->seguro_estado,
+                        'tipo' => $vehiculo->tipo,
+                        'sede_id' => $vehiculo->sede_id,
+                        'activo' => $vehiculo->activo
                     ]);
                 } else {
-                    sendResponse(false, 'Vehículo no encontrado', null, 404);
+                    jsonResponse(false, 'Vehículo no encontrado', null, 404);
                 }
             } else {
-                error_log("📋 Obteniendo listado de vehículos");
                 $stmt = $vehiculo->leerConFiltros($search, $sector, $estado, $tipo, $limit, ($page - 1) * $limit);
-                
                 $vehiculos_data = [];
                 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                     $vehiculos_data[] = $row;
                 }
-                
                 $total = $vehiculo->contarConFiltros($search, $sector, $estado, $tipo);
-                
-                error_log("✅ Vehículos encontrados: " . count($vehiculos_data) . " de $total totales");
-                
-                sendResponse(true, 'Vehículos obtenidos exitosamente', [
+                jsonResponse(true, 'Vehículos obtenidos exitosamente', [
                     'vehiculos' => $vehiculos_data,
                     'pagination' => [
-                        "current_page" => $page,
-                        "per_page" => $limit,
-                        "total" => $total,
-                        "total_pages" => ceil($total / $limit)
+                        'current_page' => $page,
+                        'per_page' => $limit,
+                        'total' => $total,
+                        'total_pages' => ceil($total / $limit)
                     ]
                 ]);
             }
@@ -115,110 +92,122 @@ try {
 
         case 'POST':
             $input = file_get_contents("php://input");
-            $data = json_decode($input);
+            $data = json_decode($input, true);
             
-            error_log("➕ Creando vehículo. Input: " . $input);
-            
-            if(!$data) {
-                error_log("❌ JSON inválido recibido");
-                sendResponse(false, 'Datos JSON inválidos', null, 400);
+            if(!$data || !is_array($data)) {
+                jsonResponse(false, 'Datos JSON inválidos', null, 400);
             }
             
-            if(empty($data->interno) || empty($data->dominio) || empty($data->modelo) || empty($data->estado)) {
-                error_log("❌ Datos incompletos recibidos");
-                sendResponse(false, 'Datos incompletos. Interno, dominio, modelo y estado son requeridos.', null, 400);
+            // Validar campos requeridos
+            $required = ['interno', 'dominio', 'modelo', 'estado'];
+            foreach ($required as $field) {
+                if (empty($data[$field])) {
+                    jsonResponse(false, "Campo requerido faltante: $field", null, 400);
+                }
             }
             
-            // Asignar propiedades
-            $vehiculo->interno = trim($data->interno);
-            $vehiculo->dominio = trim($data->dominio);
-            $vehiculo->modelo = trim($data->modelo);
-            $vehiculo->estado = trim($data->estado);
-            $vehiculo->año = $data->año ?? null;
-            $vehiculo->eq_incorporado = $data->eq_incorporado ?? '';
-            $vehiculo->sector = $data->sector ?? '';
-            $vehiculo->chofer = $data->chofer ?? '';
-            $vehiculo->observaciones = $data->observaciones ?? '';
-            $vehiculo->vtv_vencimiento = $data->vtv_vencimiento ?? null;
-            $vehiculo->vtv_estado = $data->vtv_estado ?? '';
-            $vehiculo->hab_vencimiento = $data->hab_vencimiento ?? null;
-            $vehiculo->hab_estado = $data->hab_estado ?? '';
-            $vehiculo->seguro_vencimiento = $data->seguro_vencimiento ?? null;
-            $vehiculo->tipo = $data->tipo ?? 'Rodado';
+            // Asignar propiedades según estructura real de BD
+            $vehiculo->interno = trim($data['interno']);
+            $vehiculo->dominio = trim($data['dominio']);
+            $vehiculo->modelo = trim($data['modelo']);
+            $vehiculo->estado = trim($data['estado']);
+            $vehiculo->año = $data['año'] ?? null;
+            $vehiculo->eq_incorporado = $data['eq_incorporado'] ?? '';
+            $vehiculo->sector = $data['sector'] ?? '';
+            $vehiculo->chofer = $data['chofer'] ?? '';
+            $vehiculo->observaciones = $data['observaciones'] ?? '';
+            $vehiculo->vtv_vencimiento = $data['vtv_vencimiento'] ?? null;
+            $vehiculo->vtv_estado = $data['vtv_estado'] ?? 'Vigente';
+            $vehiculo->hab_vencimiento = $data['hab_vencimiento'] ?? null;
+            $vehiculo->hab_estado = $data['hab_estado'] ?? 'Vigente';
+            $vehiculo->seguro_vencimiento = $data['seguro_vencimiento'] ?? null;
+            $vehiculo->seguro_estado = $data['seguro_estado'] ?? 'Vigente';
+            $vehiculo->tipo = $data['tipo'] ?? 'Rodado';
+            $vehiculo->sede_id = $data['sede_id'] ?? null;
+            $vehiculo->activo = $data['activo'] ?? 1;
             
             if($vehiculo->crear()) {
-                error_log("✅ Vehículo creado exitosamente: " . $vehiculo->interno);
-                sendResponse(true, 'Vehículo creado exitosamente', null, 201);
+                jsonResponse(true, 'Vehículo creado exitosamente', [
+                    'interno' => $vehiculo->interno
+                ], 201);
             } else {
-                error_log("❌ Error al crear vehículo: " . $vehiculo->interno);
-                sendResponse(false, 'No se pudo crear el vehículo. El interno ya existe.', null, 400);
+                jsonResponse(false, 'No se pudo crear el vehículo. El interno ya existe.', null, 400);
             }
             break;
 
         case 'PUT':
             $input = file_get_contents("php://input");
-            $data = json_decode($input);
+            $data = json_decode($input, true);
             
-            error_log("✏️ Actualizando vehículo. Input: " . $input);
-            
-            if(!$data || empty($data->interno)) {
-                sendResponse(false, 'Interno requerido', null, 400);
+            if(!$data || empty($data['interno'])) {
+                jsonResponse(false, 'Interno requerido', null, 400);
             }
             
-            // Asignar propiedades
-            $vehiculo->interno = trim($data->interno);
-            $vehiculo->dominio = trim($data->dominio);
-            $vehiculo->modelo = trim($data->modelo);
-            $vehiculo->estado = trim($data->estado);
-            $vehiculo->año = $data->año ?? null;
-            $vehiculo->eq_incorporado = $data->eq_incorporado ?? '';
-            $vehiculo->sector = $data->sector ?? '';
-            $vehiculo->chofer = $data->chofer ?? '';
-            $vehiculo->observaciones = $data->observaciones ?? '';
-            $vehiculo->vtv_vencimiento = $data->vtv_vencimiento ?? null;
-            $vehiculo->vtv_estado = $data->vtv_estado ?? '';
-            $vehiculo->hab_vencimiento = $data->hab_vencimiento ?? null;
-            $vehiculo->hab_estado = $data->hab_estado ?? '';
-            $vehiculo->seguro_vencimiento = $data->seguro_vencimiento ?? null;
-            $vehiculo->tipo = $data->tipo ?? 'Rodado';
+            $vehiculo->interno = $data['interno'];
+            if (!$vehiculo->leerUno()) {
+                jsonResponse(false, 'Vehículo no encontrado', null, 404);
+            }
+            
+            $vehiculo->dominio = trim($data['dominio'] ?? '');
+            $vehiculo->modelo = trim($data['modelo'] ?? '');
+            $vehiculo->estado = trim($data['estado'] ?? '');
+            $vehiculo->año = $data['año'] ?? null;
+            $vehiculo->eq_incorporado = $data['eq_incorporado'] ?? '';
+            $vehiculo->sector = $data['sector'] ?? '';
+            $vehiculo->chofer = $data['chofer'] ?? '';
+            $vehiculo->observaciones = $data['observaciones'] ?? '';
+            $vehiculo->vtv_vencimiento = $data['vtv_vencimiento'] ?? null;
+            $vehiculo->vtv_estado = $data['vtv_estado'] ?? 'Vigente';
+            $vehiculo->hab_vencimiento = $data['hab_vencimiento'] ?? null;
+            $vehiculo->hab_estado = $data['hab_estado'] ?? 'Vigente';
+            $vehiculo->seguro_vencimiento = $data['seguro_vencimiento'] ?? null;
+            $vehiculo->seguro_estado = $data['seguro_estado'] ?? 'Vigente';
+            $vehiculo->tipo = $data['tipo'] ?? 'Rodado';
+            $vehiculo->sede_id = $data['sede_id'] ?? null;
+            $vehiculo->activo = $data['activo'] ?? 1;
             
             if($vehiculo->actualizar()) {
-                error_log("✅ Vehículo actualizado exitosamente: " . $vehiculo->interno);
-                sendResponse(true, 'Vehículo actualizado exitosamente');
+                jsonResponse(true, 'Vehículo actualizado exitosamente', [
+                    'interno' => $vehiculo->interno
+                ]);
             } else {
-                error_log("❌ Error al actualizar vehículo: " . $vehiculo->interno);
-                sendResponse(false, 'No se pudo actualizar el vehículo', null, 400);
+                jsonResponse(false, 'Error al actualizar el vehículo', null, 400);
             }
             break;
 
         case 'DELETE':
             $input = file_get_contents("php://input");
-            $data = json_decode($input);
+            $data = json_decode($input, true);
             
-            error_log("🗑️ Eliminando vehículo. Input: " . $input);
-            
-            if(!$data || empty($data->interno)) {
-                sendResponse(false, 'Interno requerido', null, 400);
+            $interno = $data['interno'] ?? null;
+            if(!$interno) {
+                jsonResponse(false, 'Interno requerido', null, 400);
             }
             
-            $vehiculo->interno = $data->interno;
+            $vehiculo->interno = $interno;
+            if (!$vehiculo->leerUno()) {
+                jsonResponse(false, 'Vehículo no encontrado', null, 404);
+            }
             
-            if($vehiculo->eliminar()) {
-                error_log("✅ Vehículo eliminado exitosamente: " . $vehiculo->interno);
-                sendResponse(true, 'Vehículo eliminado exitosamente');
+            $vehiculo->activo = 0;
+            $vehiculo->estado = 'Vendido';
+            
+            if($vehiculo->actualizar()) {
+                jsonResponse(true, 'Vehículo eliminado exitosamente');
             } else {
-                error_log("❌ Error al eliminar vehículo: " . $vehiculo->interno);
-                sendResponse(false, 'No se pudo eliminar el vehículo', null, 400);
+                jsonResponse(false, 'Error al eliminar el vehículo', null, 400);
             }
             break;
 
         default:
-            sendResponse(false, 'Método no permitido', null, 405);
-            break;
+            jsonResponse(false, 'Método no permitido', null, 405);
     }
+
 } catch (Exception $e) {
-    error_log("💥 EXCEPCIÓN CRÍTICA en vehiculos.php: " . $e->getMessage());
-    error_log("💥 Stack trace: " . $e->getTraceAsString());
-    sendResponse(false, 'Error interno del servidor: ' . $e->getMessage(), null, 500);
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error interno del servidor',
+        'error' => $e->getMessage()
+    ]);
 }
-?>

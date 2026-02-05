@@ -59,12 +59,17 @@ const ColumnSelectorListadoVehiculos = ({ columnasVisibles, onToggleColumna, onC
                             <h4>{grupo.titulo}</h4>
                             {grupo.columnas.map(columna => (
                                 <label key={columna.key} className="checkbox-label">
-                                    <input
-                                        type="checkbox"
-                                        checked={columnasVisibles[columna.key]}
-                                        onChange={() => onToggleColumna(columna.key)}
-                                        disabled={columna.disabled}
-                                    />
+                                    <span className="checkbox-wrapper">
+                                        <input
+                                            type="checkbox"
+                                            checked={columnasVisibles[columna.key]}
+                                            onChange={() => onToggleColumna(columna.key)}
+                                            disabled={columna.disabled}
+                                        />
+                                        <span className="checkbox-box">
+                                            <span className="checkbox-checkmark">✓</span>
+                                        </span>
+                                    </span>
                                     <span>{columna.label}</span>
                                 </label>
                             ))}

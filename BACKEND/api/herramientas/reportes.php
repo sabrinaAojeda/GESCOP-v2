@@ -1,18 +1,28 @@
 <?php
-header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json');
-header('Access-Control-Allow-Methods: GET, POST, DELETE');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers,Content-Type,Access-Control-Allow-Methods, Authorization, X-Requested-With');
 
-require_once '../config/conexion.php';
-require_once '../models/Reporte.php';
+// Headers CORS
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit(0);
+}
+
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/models/Reporte.php';
 
 class ReportesController {
     private $conn;
     private $reporte;
 
     public function __construct() {
-        $this->conn = Conexion::getConexion();
+        $database = new Database();
+        $this->conn = $database->getConnection();
         $this->reporte = new Reporte($this->conn);
     }
 
@@ -68,12 +78,15 @@ class ReportesController {
             // Obtener datos para el reporte
             $reporteData = $this->obtenerDatosReporte($tipo);
             
+            // Usar paths absolutos para uploads
+            $base_path = dirname(__FILE__, 3); // public_html/
+            
             // Generar archivo
             $filename = 'reporte_' . $tipo . '_' . date('Y-m-d_H-i-s') . '.' . $formato;
-            $filepath = '../../../uploads/reportes/' . $filename;
+            $filepath = $base_path . '/../../uploads/reportes/' . $filename;
             
-            if (!is_dir('../../../uploads/reportes/')) {
-                mkdir('../../../uploads/reportes/', 0777, true);
+            if (!is_dir($base_path . '/../../uploads/reportes/')) {
+                mkdir($base_path . '/../../uploads/reportes/', 0777, true);
             }
             
             if ($formato === 'csv') {
@@ -136,8 +149,7 @@ class ReportesController {
         // Empresas
         $queryEmpresas = "SELECT e.*, COUNT(s.id) as num_sedes 
                          FROM empresas e 
-                         LEFT JOIN sedes s ON e.id = s.empresa_id AND s.activo = 1 
-                         WHERE e.activo = 1 
+                         LEFT JOIN sedes s ON e.id = s.empresa_id 
                          GROUP BY e.id";
         $stmt = $this->conn->prepare($queryEmpresas);
         $stmt->execute();
@@ -145,15 +157,14 @@ class ReportesController {
         
         // Sedes (Bases)
         $querySedes = "SELECT s.*, e.nombre as empresa_nombre 
-                      FROM sedes s 
-                      INNER JOIN empresas e ON s.empresa_id = e.id 
-                      WHERE s.activo = 1";
+                       FROM sedes s 
+                       INNER JOIN empresas e ON s.empresa_id = e.id";
         $stmt = $this->conn->prepare($querySedes);
         $stmt->execute();
         $data['sedes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Proveedores
-        $queryProveedores = "SELECT * FROM proveedores WHERE activo = 1";
+        $queryProveedores = "SELECT * FROM proveedores";
         $stmt = $this->conn->prepare($queryProveedores);
         $stmt->execute();
         $data['proveedores'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -161,8 +172,7 @@ class ReportesController {
         // Personal
         $queryPersonal = "SELECT p.*, pr.nombre as proveedor_nombre 
                          FROM personal p 
-                         LEFT JOIN proveedores pr ON p.proveedor_id = pr.id 
-                         WHERE p.activo = 1";
+                         LEFT JOIN proveedores pr ON p.proveedor_id = pr.id";
         $stmt = $this->conn->prepare($queryPersonal);
         $stmt->execute();
         $data['personal'] = $stmt->fetchAll(PDO::FETCH_ASSOC);

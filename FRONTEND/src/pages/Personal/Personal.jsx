@@ -1,9 +1,13 @@
-// src/pages/Personal/Personal.jsx - VERSIÓN COMPLETA CONECTADA AL BACKEND
+// src/pages/Personal/Personal.jsx - VERSIÓN COMPLETA CONECTADA AL BACKEND Y COLUMNSELECTOR
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { usePersonalCRUD } from '../../hooks/usePersonalCRUD';
 import GenericModal from '../../components/Common/GenericModal';
 import PersonalForm from '../../components/DataTable/forms/PersonalForm';
+import ColumnSelectorPersonal from '../../components/Common/ColumnSelectorPersonal';
+import CargaMasiva from '../../components/Common/CargaMasiva';
+import '@assets/css/buttons.css';
 import './Personal.css';
 
 const Personal = () => {
@@ -62,6 +66,44 @@ const Personal = () => {
   const [selectedEstado, setSelectedEstado] = useState('');
   const [selectedRol, setSelectedRol] = useState('');
   
+  // Estados para ColumnSelector
+  const [mostrarColumnSelector, setMostrarColumnSelector] = useState(false);
+  const [columnasVisibles, setColumnasVisibles] = useState({
+    'legajo': true,
+    'nombre': true,
+    'apellido': true,
+    'dni': true,
+    'cuil': false,
+    'sector': true,
+    'cargo': true,
+    'rol': false,
+    'estado': true,
+    'telefono': false,
+    'correo_corporativo': false,
+    'vencimiento_licencia': true,
+    'carnet_cargas_peligrosas': false
+  });
+  
+  // Estados para Carga Masiva
+  const [mostrarCargaMasiva, setMostrarCargaMasiva] = useState(false);
+  
+  // Plantilla para carga masiva de personal
+  const personalTemplateFields = [
+    'Legajo', 'Nombre', 'Apellido', 'DNI', 'CUIL', 
+    'Sector', 'Cargo', 'Teléfono', 'Email', 'Estado'
+  ];
+  const personalRequiredFields = ['Nombre', 'Apellido', 'DNI'];
+  
+  // Handlers para ColumnSelector
+  const abrirColumnSelector = () => setMostrarColumnSelector(true);
+  const cerrarColumnSelector = () => setMostrarColumnSelector(false);
+  const toggleColumna = (columnaKey) => {
+    setColumnasVisibles(prev => ({
+      ...prev,
+      [columnaKey]: !prev[columnaKey]
+    }));
+  };
+  
   // Manejar cambios en filtros
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -109,6 +151,78 @@ const Personal = () => {
   const handleConfirmDelete = async () => {
     if (selectedPersonal) {
       await handleDelete(selectedPersonal.id);
+    }
+  };
+  
+  // Manejar datos de carga masiva
+  const handleDataLoaded = async (data) => {
+    try {
+      // Normalizar los datos del Excel al formato del formulario
+      const normalizedData = data.map(row => ({
+        nombre: row.Nombre || row.nombre || '',
+        apellido: row.Apellido || row.apellido || '',
+        dni: row.DNI || row.dni || String(row.DNI).trim(),
+        cuil: row.CUIL || row.cuil || '',
+        sector: row.Sector || row.sector || '',
+        cargo: row.Cargo || row.cargo || '',
+        telefono: row.Teléfono || row.telefono || row['Teléfono'] || '',
+        correo_corporativo: row.Email || row.email || row['Correo'] || row.correo_corporativo || '',
+        estado: row.Estado || row.estado || 'Activo'
+      }));
+      
+      // Guardar cada registro
+      for (const personalData of normalizedData) {
+        await handleCreate(personalData);
+      }
+    } catch (error) {
+      console.error('Error en carga masiva:', error);
+      alert('Error al procesar algunos registros');
+    }
+  };
+  
+  // Exportar a XLSX
+  const handleExportToXLSX = () => {
+    if (filteredPersonal.length === 0) {
+      alert('⚠️ No hay datos para exportar');
+      return;
+    }
+    
+    try {
+      const dataToExport = filteredPersonal.map(p => ({
+        Legajo: p.legajo || `P${String(p.id).padStart(4, '0')}`,
+        Nombre: p.nombre,
+        Apellido: p.apellido,
+        DNI: p.dni,
+        CUIL: p.cuil || '',
+        Sector: p.sector || '',
+        Cargo: p.cargo || p.puesto || '',
+        Rol: p.rol_sistema || p.rol || '',
+        Estado: p.estado || (p.activo === 1 ? 'Activo' : 'Inactivo'),
+        Teléfono: p.telefono || '',
+        Email: p.correo_corporativo || '',
+        'Licencia Vencimiento': p.vencimiento_licencia || '',
+        'Carnet C.P.': p.carnet_cargas_peligrosas ? 'Sí' : 'No'
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Personal');
+      
+      // Ajustar ancho de columnas
+      const wscols = [
+        { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, 
+        { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 10 },
+        { wch: 12 }, { wch: 15 }, { wch: 25 }, { wch: 18 }, { wch: 12 }
+      ];
+      ws['!cols'] = wscols;
+      
+      const date = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `personal_${date}.xlsx`);
+      
+      alert('✅ Personal exportado exitosamente');
+    } catch (error) {
+      console.error('Error exportando:', error);
+      alert('❌ Error al exportar datos');
     }
   };
   
@@ -176,14 +290,15 @@ const Personal = () => {
                 <th>Nombre</th>
                 <th>Apellido</th>
                 <th>DNI</th>
-                <th>CUIL</th>
-                <th>Teléfono</th>
-                <th>Email Corporativo</th>
-                <th>Sector</th>
-                <th>Cargo</th>
-                <th>Rol</th>
-                <th>Licencia</th>
-                <th>Estado</th>
+                {columnasVisibles.cuil && <th>CUIL</th>}
+                {columnasVisibles.sector && <th>Sector</th>}
+                {columnasVisibles.cargo && <th>Cargo</th>}
+                {columnasVisibles.rol && <th>Rol</th>}
+                {columnasVisibles.estado && <th>Estado</th>}
+                {columnasVisibles.telefono && <th>Teléfono</th>}
+                {columnasVisibles.correo_corporativo && <th>Email Corporativo</th>}
+                {columnasVisibles.vencimiento_licencia && <th>Licencia</th>}
+                {columnasVisibles.carnet_cargas_peligrosas && <th>Carnet C.P.</th>}
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -197,38 +312,58 @@ const Personal = () => {
                   <td>{persona.apellido}</td>
                   <td>{persona.dni}</td>
                   <td>{persona.cuil || 'N/A'}</td>
-                  <td>{persona.telefono || 'N/A'}</td>
-                  <td>
-                    {persona.correo_corporativo ? (
-                      <a href={`mailto:${persona.correo_corporativo}`} className="email-link">
-                        {persona.correo_corporativo}
-                      </a>
-                    ) : 'N/A'}
-                  </td>
-                  <td>{persona.sector}</td>
-                  <td>{persona.cargo || persona.puesto}</td>
-                  <td>
-                    <span className={`rol-badge ${(persona.rol_sistema || persona.rol) === 'admin' ? 'rol-admin' : 'rol-usuario'}`}>
-                      {(persona.rol_sistema || persona.rol) === 'admin' ? 'Administrador' : 'Usuario'}
-                    </span>
-                  </td>
-                  <td>
-                    {persona.vencimiento_licencia ? (
-                      <span className={`vencimiento-badge ${
-                        new Date(persona.vencimiento_licencia) < new Date() ? 'vencido' :
-                        new Date(persona.vencimiento_licencia) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
-                      }`}>
-                        {new Date(persona.vencimiento_licencia).toLocaleDateString('es-AR')}
+                  {columnasVisibles.telefono && <td>{persona.telefono || 'N/A'}</td>}
+                  {columnasVisibles.correo_corporativo && (
+                    <td>
+                      {persona.correo_corporativo ? (
+                        <a href={`mailto:${persona.correo_corporativo}`} className="email-link">
+                          {persona.correo_corporativo}
+                        </a>
+                      ) : 'N/A'}
+                    </td>
+                  )}
+                  {columnasVisibles.sector && <td>{persona.sector}</td>}
+                  {columnasVisibles.cargo && <td>{persona.cargo || persona.puesto}</td>}
+                  {columnasVisibles.rol && (
+                    <td>
+                      <span className={`rol-badge ${(persona.rol_sistema || persona.rol) === 'admin' ? 'rol-admin' : 'rol-usuario'}`}>
+                        {(persona.rol_sistema || persona.rol) === 'admin' ? 'Administrador' : 'Usuario'}
                       </span>
-                    ) : 'N/A'}
-                  </td>
-                  <td>
-                    <span className={`status-badge ${
-                      (persona.estado === 'Activo' || persona.activo === 1) ? 'status-active' : 'status-inactivo'
-                    }`}>
-                      {persona.estado || (persona.activo === 1 ? 'Activo' : 'Inactivo')}
-                    </span>
-                  </td>
+                    </td>
+                  )}
+                  {columnasVisibles.vencimiento_licencia && (
+                    <td>
+                      {persona.vencimiento_licencia ? (
+                        <span className={`vencimiento-badge ${
+                          new Date(persona.vencimiento_licencia) < new Date() ? 'vencido' :
+                          new Date(persona.vencimiento_licencia) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
+                        }`}>
+                          {new Date(persona.vencimiento_licencia).toLocaleDateString('es-AR')}
+                        </span>
+                      ) : 'N/A'}
+                    </td>
+                  )}
+                  {columnasVisibles.estado && (
+                    <td>
+                      <span className={`status-badge ${
+                        (persona.estado === 'Activo' || persona.activo === 1) ? 'status-active' : 'status-inactivo'
+                      }`}>
+                        {persona.estado || (persona.activo === 1 ? 'Activo' : 'Inactivo')}
+                      </span>
+                    </td>
+                  )}
+                  {columnasVisibles.carnet_cargas_peligrosas && (
+                    <td>
+                      {persona.carnet_cargas_peligrosas ? (
+                        <span className={`vencimiento-badge ${
+                          new Date(persona.vencimiento_carnet) < new Date() ? 'vencido' :
+                          new Date(persona.vencimiento_carnet) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
+                        }`}>
+                          {new Date(persona.vencimiento_carnet).toLocaleDateString('es-AR')}
+                        </span>
+                      ) : 'No'}
+                    </td>
+                  )}
                   <td>
                     <div className="action-buttons">
                       <button 
@@ -338,16 +473,33 @@ const Personal = () => {
             <span className="section-icon">👥</span>
             Gestión de Personal - Empleados COPESA
           </h2>
+          {/* Botón de Carga Masiva - Separado */}
+          <div className="carga-masiva-toolbar">
+            <button 
+              className="purple"
+              onClick={() => setMostrarCargaMasiva(true)}
+              disabled={loading}
+            >
+              <span className="btn-icon">📥</span> Carga Masiva
+            </button>
+          </div>
           <div className="table-toolbar">
             <button 
-              className="btn btn-secondary"
-              onClick={exportData}
-              disabled={loading || personal.length === 0}
+              className="teal"
+              onClick={abrirColumnSelector}
+              disabled={loading}
             >
-              <span className="btn-icon">📤</span> Exportar CSV
+              <span className="btn-icon">👁️</span> Columnas
             </button>
             <button 
-              className="btn btn-primary"
+              className="blue"
+              onClick={handleExportToXLSX}
+              disabled={loading || personal.length === 0}
+            >
+              <span className="btn-icon">📤</span> Exportar
+            </button>
+            <button 
+              className="green"
               onClick={openCreateModal}
               disabled={loading}
             >
@@ -399,7 +551,7 @@ const Personal = () => {
             <option value="Licencia">Licencia</option>
           </select>
           <button
-            className="btn btn-secondary"
+            className="secondary"
             onClick={clearFilters}
             disabled={loading || (!searchTerm && !selectedSector && !selectedRol && !selectedEstado)}
           >
@@ -581,6 +733,25 @@ const Personal = () => {
           </div>
         </GenericModal>
       )}
+      
+      {/* Column Selector Modal */}
+      {mostrarColumnSelector && (
+        <ColumnSelectorPersonal
+          columnasVisibles={columnasVisibles}
+          onToggleColumna={toggleColumna}
+          onClose={cerrarColumnSelector}
+        />
+      )}
+      
+      {/* Modal de Carga Masiva */}
+      <CargaMasiva
+        isOpen={mostrarCargaMasiva}
+        onClose={() => setMostrarCargaMasiva(false)}
+        onDataLoaded={handleDataLoaded}
+        title="Carga Masiva de Personal"
+        templateFields={personalTemplateFields}
+        requiredFields={personalRequiredFields}
+      />
     </div>
   );
 };

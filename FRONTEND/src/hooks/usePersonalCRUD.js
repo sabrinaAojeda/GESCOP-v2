@@ -1,6 +1,6 @@
 // src/hooks/usePersonalCRUD.js - VERSIÓN CONECTADA AL BACKEND REAL
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { personalService } from '../services';
+import personalService from '../services/personalService';
 import { useModal } from './useModal';
 
 const usePersonalCRUD = () => {
@@ -103,24 +103,20 @@ const usePersonalCRUD = () => {
       console.error('💥 [usePersonalCRUD] Error:', err.message);
       setError(err.message || 'Error al cargar el personal');
       
-      // NO usar datos mock en producción
-      if (import.meta.env.DEV) {
-        console.warn('🔄 [usePersonalCRUD] Modo desarrollo - Revisar conexión backend');
-        // Dejar arrays vacíos para forzar la conexión real
-        setPersonal([]);
-        setPagination({
-          current_page: 1,
-          per_page: 10,
-          total: 0,
-          total_pages: 0
-        });
-      }
+      // NO usar datos mock - arrays vacíos
+      setPersonal([]);
+      setPagination({
+        current_page: 1,
+        per_page: 10,
+        total: 0,
+        total_pages: 0
+      });
     } finally {
       if (mountedRef.current) {
         setLoading(false);
       }
     }
-  }, [filters]);
+  }, []); // DEPENDENCIA VACÍA - se ejecuta solo cuando se llama explícitamente
 
   // 🔍 BÚSQUEDA CON DEBOUNCE
   const handleSearch = useCallback((searchTerm) => {
@@ -421,11 +417,11 @@ const usePersonalCRUD = () => {
     }
   }, [personal]);
 
-  // 🏁 INICIALIZACIÓN
+  // 🏁 INICIALIZACIÓN - SOLO UNA VEZ
   useEffect(() => {
     mountedRef.current = true;
     
-    // Cargar datos iniciales desde el backend
+    // Cargar datos iniciales desde el backend SOLO UNA VEZ al montar
     console.log('🚀 [usePersonalCRUD] Ejecutando carga inicial desde backend');
     loadPersonal();
     
@@ -435,7 +431,7 @@ const usePersonalCRUD = () => {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, []);
+  }, []); // DEPENDENCIA VACÍA - solo se ejecuta una vez al montar
 
   const stats = calculateStats();
 

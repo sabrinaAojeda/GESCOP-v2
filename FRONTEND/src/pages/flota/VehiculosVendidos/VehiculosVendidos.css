@@ -412,3 +412,15 @@
     grid-template-columns: 1fr;
   }
 }
+/* ASEGURAR QUE LOS BOTONES SIEMPRE SEAN CLICKEABLES */
+.icon-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+.actions-cell {
+  pointer-events: auto !important;
+  z-index: 5 !important;
+}

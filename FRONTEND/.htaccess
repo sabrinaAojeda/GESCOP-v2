@@ -8,5 +8,5 @@
     RewriteRule ^ - [L]
     
     # Redirigir todo a index.html para React SPA
-    RewriteRule ^(.*)$ FRONTEND/index.html [QSA,L]
+    RewriteRule ^(.*)$ index.html [QSA,L]
 </IfModule>

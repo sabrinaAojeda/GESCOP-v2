@@ -1,28 +1,39 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+// BACKEND/api/herramientas/alertas.php - API para gestión de alertas
+header('Content-Type: application/json; charset=UTF-8');
 
-require_once '../config/database.php';
-require_once '../models/Alerta.php';
+// Headers CORS
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit(0);
+}
+
+// Usar paths absolutos para evitar problemas de include
+$base_path = dirname(__FILE__, 3); // public_html/
+require_once $base_path . '/config/database.php';
+require_once $base_path . '/models/Alerta.php';
+
+// Función de respuesta local
+function sendResponse($success = true, $message = '', $data = null, $httpCode = 200) {
+    http_response_code($httpCode);
+    echo json_encode([
+        'success' => $success,
+        'message' => $message,
+        'data' => $data,
+        'timestamp' => date('c')
+    ]);
+    exit();
+}
 
 $database = new Database();
 $db = $database->getConnection();
 $alerta = new Alerta($db);
 
 $method = $_SERVER['REQUEST_METHOD'];
-
-function sendResponse($success, $message = '', $data = null, $httpCode = 200) {
-    http_response_code($httpCode);
-    echo json_encode([
-        'success' => $success,
-        'message' => $message,
-        'data' => $data
-    ]);
-    exit();
-}
 
 try {
     switch($method) {
@@ -32,9 +43,7 @@ try {
                 'categoria' => $_GET['categoria'] ?? '',
                 'prioridad' => $_GET['prioridad'] ?? '',
                 'estado' => $_GET['estado'] ?? '',
-                'vehiculo_id' => $_GET['vehiculo_id'] ?? '',
-                'fecha_desde' => $_GET['fecha_desde'] ?? '',
-                'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
+                'tipo' => $_GET['tipo'] ?? '',
                 'search' => $_GET['search'] ?? ''
             ];
             
@@ -47,19 +56,15 @@ try {
                         'tipo' => $alerta->tipo,
                         'titulo' => $alerta->titulo,
                         'descripcion' => $alerta->descripcion,
-                        'vehiculo_id' => $alerta->vehiculo_id,
-                        'vehiculo_dominio' => $alerta->vehiculo_dominio,
-                        'vehiculo_modelo' => $alerta->vehiculo_modelo,
                         'prioridad' => $alerta->prioridad,
                         'estado' => $alerta->estado,
                         'categoria' => $alerta->categoria,
-                        'fecha_generada' => $alerta->fecha_generada,
+                        'fecha_generacion' => $alerta->fecha_generacion,
                         'fecha_vencimiento' => $alerta->fecha_vencimiento,
-                        'fecha_resuelta' => $alerta->fecha_resuelta,
-                        'usuario_generador' => $alerta->usuario_generador,
-                        'usuario_resolutor' => $alerta->usuario_resolutor,
-                        'notas' => $alerta->notas,
-                        'elemento' => $alerta->elemento
+                        'elemento_tipo' => $alerta->elemento_tipo,
+                        'elemento_id' => $alerta->elemento_id,
+                        'elemento_nombre' => $alerta->elemento_nombre,
+                        'observaciones' => $alerta->observaciones
                     ]);
                 } else {
                     sendResponse(false, 'Alerta no encontrada', null, 404);
@@ -109,17 +114,36 @@ try {
                 sendResponse(false, 'Datos incompletos. Tipo y título son requeridos.', null, 400);
             }
             
+            // Normalizar prioridad y estado
+            $prioridad = strtolower($data->prioridad ?? 'medio');
+            $prioridadMap = [
+                'critico' => 'critico', 'crítico' => 'critico',
+                'alto' => 'alto',
+                'medio' => 'medio',
+                'bajo' => 'bajo'
+            ];
+            $prioridad = $prioridadMap[$prioridad] ?? 'medio';
+            
+            $estado = strtolower($data->estado ?? 'pendiente');
+            $estadoMap = [
+                'pendiente' => 'pendiente',
+                'en_proceso' => 'en_proceso',
+                'resuelta' => 'resuelta',
+                'archivada' => 'archivada'
+            ];
+            $estado = $estadoMap[$estado] ?? 'pendiente';
+            
             $alerta->tipo = $data->tipo;
             $alerta->titulo = $data->titulo;
             $alerta->descripcion = $data->descripcion ?? '';
-            $alerta->vehiculo_id = $data->vehiculo_id ?? '';
-            $alerta->prioridad = $data->prioridad ?? 'medio';
-            $alerta->estado = $data->estado ?? 'activa';
+            $alerta->prioridad = $prioridad;
+            $alerta->estado = $estado;
             $alerta->categoria = $data->categoria ?? 'Otros';
             $alerta->fecha_vencimiento = $data->fecha_vencimiento ?? null;
-            $alerta->usuario_generador = $data->usuario_generador ?? 'Sistema';
-            $alerta->notas = $data->notas ?? '';
-            $alerta->elemento = $data->elemento ?? '';
+            $alerta->elemento_tipo = $data->elemento_tipo ?? '';
+            $alerta->elemento_id = $data->elemento_id ?? null;
+            $alerta->elemento_nombre = $data->elemento_nombre ?? '';
+            $alerta->observaciones = $data->observaciones ?? '';
             
             if ($alerta->crear()) {
                 sendResponse(true, 'Alerta creada exitosamente', ['id' => $alerta->id], 201);
@@ -139,8 +163,6 @@ try {
             // Verificar si es para resolver o posponer
             if (isset($_GET['accion'])) {
                 $accion = $_GET['accion'];
-                $usuario = $data->usuario ?? 'Sistema';
-                
                 $alerta->id = $id;
                 
                 if (!$alerta->leerUno()) {
@@ -149,7 +171,7 @@ try {
                 
                 if ($accion == 'resolver') {
                     $notas = $data->notas ?? '';
-                    if ($alerta->resolver($usuario, $notas)) {
+                    if ($alerta->resolver('Sistema', $notas)) {
                         sendResponse(true, 'Alerta marcada como resuelta');
                     } else {
                         sendResponse(false, 'No se pudo resolver la alerta', null, 500);
@@ -160,7 +182,7 @@ try {
                         sendResponse(false, 'Nueva fecha requerida', null, 400);
                     }
                     $notas = $data->notas ?? '';
-                    if ($alerta->posponer($nueva_fecha, $usuario, $notas)) {
+                    if ($alerta->posponer($nueva_fecha, 'Sistema', $notas)) {
                         sendResponse(true, 'Alerta pospuesta');
                     } else {
                         sendResponse(false, 'No se pudo posponer la alerta', null, 500);
@@ -177,23 +199,36 @@ try {
             
             $alerta->id = $id;
             
-            // Primero leer la alerta existente
             if (!$alerta->leerUno()) {
                 sendResponse(false, 'Alerta no encontrada', null, 404);
             }
             
-            // Actualizar solo los campos proporcionados
             if (isset($data->tipo)) $alerta->tipo = $data->tipo;
             if (isset($data->titulo)) $alerta->titulo = $data->titulo;
             if (isset($data->descripcion)) $alerta->descripcion = $data->descripcion;
-            if (isset($data->vehiculo_id)) $alerta->vehiculo_id = $data->vehiculo_id;
-            if (isset($data->prioridad)) $alerta->prioridad = $data->prioridad;
-            if (isset($data->estado)) $alerta->estado = $data->estado;
+            if (isset($data->prioridad)) {
+                $prioridad = strtolower($data->prioridad);
+                $prioridadMap = [
+                    'critico' => 'critico', 'crítico' => 'critico',
+                    'alto' => 'alto',
+                    'medio' => 'medio',
+                    'bajo' => 'bajo'
+                ];
+                $alerta->prioridad = $prioridadMap[$prioridad] ?? $data->prioridad;
+            }
+            if (isset($data->estado)) {
+                $estado = strtolower($data->estado);
+                $estadoMap = [
+                    'pendiente' => 'pendiente',
+                    'en_proceso' => 'en_proceso',
+                    'resuelta' => 'resuelta',
+                    'archivada' => 'archivada'
+                ];
+                $alerta->estado = $estadoMap[$estado] ?? $data->estado;
+            }
             if (isset($data->categoria)) $alerta->categoria = $data->categoria;
             if (isset($data->fecha_vencimiento)) $alerta->fecha_vencimiento = $data->fecha_vencimiento;
-            if (isset($data->usuario_generador)) $alerta->usuario_generador = $data->usuario_generador;
-            if (isset($data->notas)) $alerta->notas = $data->notas;
-            if (isset($data->elemento)) $alerta->elemento = $data->elemento;
+            if (isset($data->observaciones)) $alerta->observaciones = $data->observaciones;
             
             if ($alerta->actualizar()) {
                 sendResponse(true, 'Alerta actualizada exitosamente');
@@ -227,4 +262,3 @@ try {
     error_log("Error en alertas.php: " . $e->getMessage());
     sendResponse(false, 'Error interno del servidor: ' . $e->getMessage(), null, 500);
 }
-?>

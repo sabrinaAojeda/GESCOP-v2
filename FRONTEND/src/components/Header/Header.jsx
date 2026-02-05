@@ -1,47 +1,45 @@
-// src/components/Header/Header.jsx - VERSIÓN MEJORADA Y COMPACTA
-import React, { useState } from 'react';
+/* src/components/Header/Header.jsx - VERSIÓN ORIGINAL */
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import useResponsive from '../../hooks/useResponsive';
 import './Header.css';
 
-const Header = ({ onMenuClick, sidebarOpen, shouldShowHamburger }) => {
+const Header = ({ toggleSidebar, isSidebarOpen }) => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const responsive = useResponsive();
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Función para manejar logout
-  const handleLogout = () => {
-    logout();
-    setShowUserMenu(false);
-  };
-
-  // Función para manejar búsqueda global
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Buscando:', searchQuery);
-    // Aquí se implementaría la búsqueda global
+    if (searchQuery.trim()) {
+      // Búsqueda global básica
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
     <header className="top-header">
-      {/* Parte izquierda - Menú hamburguesa SOLO en móviles */}
+      {/* Parte izquierda */}
       <div className="header-left">
-        {shouldShowHamburger && (
-          <button 
-            className="menu-toggle"
-            onClick={onMenuClick}
-            aria-label={sidebarOpen ? "Cerrar menú" : "Abrir menú"}
-          >
-            {sidebarOpen ? '✕' : '☰'}
-          </button>
-        )}
-
+        {/* Menú hamburguesa - visible solo en móviles */}
+        <button 
+          className="menu-toggle" 
+          onClick={toggleSidebar}
+          aria-label="Toggle menu"
+        >
+          {isSidebarOpen ? '✕' : '☰'}
+        </button>
+        
         {/* Información del usuario */}
         <div className="header-user-info">
-          <span className="header-greeting">Bienvenido/a</span>
+          <span className="header-greeting">Bienvenido</span>
           <span className="header-username">
-            {user?.name || 'Usuario'}
+            {user?.nombre ? `${user.nombre} ${user.apellido || ''}` : 'Usuario'}
           </span>
         </div>
       </div>
@@ -67,58 +65,29 @@ const Header = ({ onMenuClick, sidebarOpen, shouldShowHamburger }) => {
         </div>
 
         {/* Perfil de usuario - Desktop */}
-        {!responsive.shouldShowHamburgerMenu() && user && (
-          <>
-            <div className="user-profile">
-              <div className="profile-avatar">
-                <span className="avatar-icon">
-                  {user.name?.charAt(0) || 'U'}
-                </span>
-              </div>
-              <div className="profile-info">
-                <span className="profile-name">{user.name}</span>
-                <span className="profile-role">
-                  {user.role === 'admin' ? 'Administrador' : 'Empleado'}
-                </span>
-              </div>
-            </div>
-
-            <button className="btn-logout" onClick={handleLogout}>
-              <span>🚪</span> Salir
-            </button>
-          </>
-        )}
-
-        {/* Menú de usuario - Mobile */}
-        {responsive.shouldShowHamburgerMenu() && user && (
-          <div className="mobile-user-menu">
-            <button 
-              className="mobile-user-toggle"
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              aria-label="Menú de usuario"
-            >
-              <div className="profile-avatar">
-                <span className="avatar-icon">
-                  {user.name?.charAt(0) || 'U'}
-                </span>
-              </div>
-            </button>
-
-            {showUserMenu && (
-              <div className="mobile-user-dropdown">
-                <div className="mobile-user-info">
-                  <div className="profile-name">{user.name}</div>
-                  <div className="profile-role">
-                    {user.role === 'admin' ? 'Administrador' : 'Empleado'}
-                  </div>
-                </div>
-                <button className="mobile-logout-btn" onClick={handleLogout}>
-                  <span>🚪</span> Cerrar sesión
-                </button>
-              </div>
-            )}
+        <div className="user-profile">
+          <div className="profile-avatar">
+            <span className="avatar-icon">
+              {user?.nombre ? user.nombre.charAt(0).toUpperCase() : 'U'}
+            </span>
           </div>
-        )}
+          <div className="profile-info">
+            <span className="profile-name">
+              {user?.nombre ? `${user.nombre} ${user.apellido || ''}` : 'Usuario'}
+            </span>
+            <span className="profile-role">{user?.rol || 'Usuario'}</span>
+          </div>
+        </div>
+
+        {/* Botón logout Desktop */}
+        <button 
+          className="btn-logout" 
+          onClick={handleLogout}
+          title="Cerrar sesión"
+        >
+          <span>🚪</span>
+          <span className="btn-text">Salir</span>
+        </button>
       </div>
     </header>
   );

@@ -1,0 +1,231 @@
+/* src/components/DataTable/forms/SedesForm.css - ESTILO SEDES */
+
+.sedes-form {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sedes-form .form-section {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 25px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 30px;
+}
+
+.sedes-form .form-section:last-child {
+  margin-bottom: 0;
+}
+
+.sedes-form .form-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sedes-form .form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.sedes-form .form-group {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sedes-form .form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+.sedes-form .form-label.required::after {
+  content: ' *';
+  color: #e53e3e;
+}
+
+.sedes-form .form-input {
+  padding: 12px 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: white;
+  color: #2d3748;
+}
+
+.sedes-form .form-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.sedes-form .form-input:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+  color: #a0aec0;
+}
+
+.sedes-form textarea.form-input {
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* Select personalizado */
+.sedes-form .form-select {
+  padding: 12px 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: white;
+  color: #2d3748;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 20px;
+  padding-right: 50px;
+}
+
+.sedes-form .form-select:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* Checkbox group */
+.sedes-form .checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.sedes-form .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #4a5568;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.sedes-form .checkbox-label:hover {
+  background: #f7fafc;
+}
+
+.sedes-form .checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  border: 2px solid #cbd5e1;
+  border-radius: 4px;
+  background: white;
+  position: relative;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sedes-form .checkbox-label input[type="checkbox"]:checked {
+  background-color: #4299e1;
+  border-color: #4299e1;
+}
+
+/* Checkmark con SVG */
+.sedes-form .checkbox-label input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+/* Form actions */
+.sedes-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  padding-top: 25px;
+  border-top: 1px solid #e2e8f0;
+  margin-top: 20px;
+}
+
+/* Loading spinner */
+.sedes-form .loading-spinner-small {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Icon buttons */
+.sedes-form .icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sedes-form .icon-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.sedes-form .icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sedes-form .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .sedes-form .checkbox-group {
+    grid-template-columns: 1fr;
+  }
+  
+  .sedes-form .form-actions {
+    flex-direction: column;
+  }
+  
+  .sedes-form .form-actions button {
+    width: 100%;
+  }
+}

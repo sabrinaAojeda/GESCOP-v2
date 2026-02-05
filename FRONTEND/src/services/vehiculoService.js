@@ -1,17 +1,17 @@
-// src/services/vehiculoService.js - VERSIÓN DEFINITIVA
+// FRONTEND/src/services/vehiculoService.js - VERSIÓN COMPLETA Y CORREGIDA
 import api from './api';
 
-// Configuración de logging permanente
+// Configuración de logging
 const LOG_LEVEL = {
   ERROR: 0,
-  WARN: 1, 
+  WARN: 1,
   INFO: 2,
   DEBUG: 3
 };
 
 const CURRENT_LOG_LEVEL = import.meta.env.VITE_ENV === 'production' ? LOG_LEVEL.WARN : LOG_LEVEL.DEBUG;
 
-class Logger {
+class VehiculoLogger {
   static error(message, data = null) {
     if (CURRENT_LOG_LEVEL >= LOG_LEVEL.ERROR) {
       console.error(`❌ [VEHICULO_SERVICE] ${message}`, data || '');
@@ -38,11 +38,11 @@ class Logger {
 }
 
 const vehiculoService = {
-  // 🎯 OBTENER VEHÍCULOS CON FILTROS (CORREGIDO)
+  // 🎯 OBTENER VEHÍCULOS CON FILTROS
   getVehiculos: async (filters = {}) => {
     const { 
       page = 1, 
-      limit = 10, 
+      limit = 50, 
       search = '', 
       sector = '', 
       estado = '',
@@ -60,38 +60,68 @@ const vehiculoService = {
     };
 
     try {
-      Logger.info(`Solicitando vehículos: /flota/vehiculos`, params);
+      VehiculoLogger.info(`Solicitando vehículos: /flota/vehiculos`, params);
       
-      // 🎯 LLAMADA CORRECTA - usando api.get con params
+      // 🎯 LLAMADA CORRECTA CON RUTA /api/flota/vehiculos
       const response = await api.get('/flota/vehiculos', { params });
       
       // 🎯 MANEJO DE RESPUESTA ESTANDARIZADO
       if (response.data) {
-        // Verificar diferentes formatos de respuesta
+        // Formato: { success: true, data: { vehiculos: [], pagination: {} } }
         if (response.data.success !== undefined) {
-          Logger.debug(`Respuesta exitosa: ${response.data.data?.vehiculos?.length || 0} registros`);
-          return response.data; // Formato: { success: true, data: {...} }
-        } else if (response.data.vehiculos !== undefined) {
-          Logger.debug(`Respuesta directa: ${response.data.vehiculos.length || 0} registros`);
-          return { success: true, data: response.data }; // Formato: { vehiculos: [], pagination: {} }
-        } else {
-          Logger.debug(`Respuesta genérica: ${response.data.length || 0} registros`);
-          return { success: true, data: { vehiculos: response.data } }; // Formato: []
+          VehiculoLogger.debug(`✅ Respuesta exitosa: ${response.data.data?.vehiculos?.length || 0} registros`);
+          return response.data;
+        }
+        // Formato alternativo
+        else if (response.data.vehiculos !== undefined) {
+          VehiculoLogger.debug(`✅ Respuesta directa: ${response.data.vehiculos.length} registros`);
+          return { success: true, data: response.data };
+        }
+        // Array directo
+        else if (Array.isArray(response.data)) {
+          VehiculoLogger.debug(`✅ Array directo: ${response.data.length} registros`);
+          return { 
+            success: true, 
+            data: { 
+              vehiculos: response.data,
+              pagination: {
+                current_page: 1,
+                per_page: limit,
+                total: response.data.length,
+                total_pages: 1
+              }
+            } 
+          };
+        }
+        // Respuesta inesperada
+        else {
+          VehiculoLogger.warn(`⚠️ Formato de respuesta inesperado:`, response.data);
+          return { 
+            success: true, 
+            data: { 
+              vehiculos: [],
+              pagination: {
+                current_page: 1,
+                per_page: limit,
+                total: 0,
+                total_pages: 0
+              }
+            } 
+          };
         }
       } else {
-        Logger.warn('Respuesta vacía del servidor');
+        VehiculoLogger.warn('Respuesta vacía del servidor');
         throw new Error('Respuesta vacía del servidor');
       }
       
     } catch (error) {
-      Logger.error('Error en getVehiculos', {
+      VehiculoLogger.error('Error en getVehiculos', {
         endpoint: '/flota/vehiculos',
         error: error.message,
         status: error.response?.status,
-        data: error.response?.data
+        params: params
       });
       
-      // 🎯 RE-LANZAR ERROR PARA QUE LO MANEJE EL HOOK
       throw error;
     }
   },
@@ -99,18 +129,45 @@ const vehiculoService = {
   // 🎯 CREAR NUEVO VEHÍCULO
   createVehiculo: async (vehiculoData) => {
     try {
-      Logger.info('Creando vehículo', { interno: vehiculoData.interno });
-      const response = await api.post('/flota/vehiculos', vehiculoData);
+      VehiculoLogger.info('Creando vehículo', { interno: vehiculoData.interno });
+      
+      // 🎯 LIMPIAR DATOS ANTES DE ENVIAR
+      const datosParaEnviar = {
+        interno: vehiculoData.interno?.toString().trim() || '',
+        año: vehiculoData.año ? parseInt(vehiculoData.año) : null,
+        dominio: vehiculoData.dominio?.toString().trim().toUpperCase() || '',
+        modelo: vehiculoData.modelo?.toString().trim() || '',
+        eq_incorporado: vehiculoData.eq_incorporado?.toString().trim() || '',
+        sector: vehiculoData.sector?.toString().trim() || '',
+        chofer: vehiculoData.chofer?.toString().trim() || '',
+        estado: vehiculoData.estado?.toString().trim() || 'Activo',
+        observaciones: vehiculoData.observaciones?.toString().trim() || '',
+        vtv_vencimiento: vehiculoData.vtv_vencimiento || null,
+        vtv_estado: vehiculoData.vtv_estado || 'Vigente',
+        hab_vencimiento: vehiculoData.hab_vencimiento || null,
+        hab_estado: vehiculoData.hab_estado || 'Vigente',
+        hab_tipo: vehiculoData.hab_tipo?.toString().trim() || '',
+        seguro_vencimiento: vehiculoData.seguro_vencimiento || null,
+        seguro_estado: vehiculoData.seguro_estado || 'Vigente',
+        seguro_tipo: vehiculoData.seguro_tipo?.toString().trim() || '',
+        tarjeta_ypf: vehiculoData.tarjeta_ypf?.toString().trim() || '',
+        tipo: vehiculoData.tipo?.toString().trim() || 'Rodado'
+      };
+
+      VehiculoLogger.debug('Datos limpios para enviar:', datosParaEnviar);
+      
+      const response = await api.post('/flota/vehiculos', datosParaEnviar);
       
       if (response.data?.success) {
-        Logger.info('Vehículo creado exitosamente', { interno: vehiculoData.interno });
+        VehiculoLogger.info('✅ Vehículo creado exitosamente', { interno: vehiculoData.interno });
         return response.data;
       } else {
-        Logger.warn('Error en respuesta al crear vehículo', response.data);
-        throw new Error(response.data?.message || 'Error al crear vehículo');
+        const errorMsg = response.data?.message || 'Error al crear vehículo';
+        VehiculoLogger.warn('Error en respuesta', response.data);
+        throw new Error(errorMsg);
       }
     } catch (error) {
-      Logger.error('Error en createVehiculo', {
+      VehiculoLogger.error('Error en createVehiculo', {
         interno: vehiculoData.interno,
         error: error.message,
         status: error.response?.status,
@@ -120,24 +177,48 @@ const vehiculoService = {
     }
   },
 
-  // 🎯 ACTUALIZAR VEHÍCULO (CORREGIDO)
+  // 🎯 ACTUALIZAR VEHÍCULO
   updateVehiculo: async (interno, vehiculoData) => {
     try {
-      Logger.info('Actualizando vehículo', { interno });
+      VehiculoLogger.info('Actualizando vehículo', { interno });
       
-      // 🎯 ENVIAR EL INTERNO EN EL BODY, NO EN LA URL
-      const dataToSend = { interno, ...vehiculoData };
-      const response = await api.put('/flota/vehiculos', dataToSend);
+      // 🎯 ENVIAR INTERNO EN EL BODY
+      const datosParaEnviar = {
+        interno: interno,
+        año: vehiculoData.año ? parseInt(vehiculoData.año) : null,
+        dominio: vehiculoData.dominio?.toString().trim().toUpperCase() || '',
+        modelo: vehiculoData.modelo?.toString().trim() || '',
+        eq_incorporado: vehiculoData.eq_incorporado?.toString().trim() || '',
+        sector: vehiculoData.sector?.toString().trim() || '',
+        chofer: vehiculoData.chofer?.toString().trim() || '',
+        estado: vehiculoData.estado?.toString().trim() || 'Activo',
+        observaciones: vehiculoData.observaciones?.toString().trim() || '',
+        vtv_vencimiento: vehiculoData.vtv_vencimiento || null,
+        vtv_estado: vehiculoData.vtv_estado || 'Vigente',
+        hab_vencimiento: vehiculoData.hab_vencimiento || null,
+        hab_estado: vehiculoData.hab_estado || 'Vigente',
+        hab_tipo: vehiculoData.hab_tipo?.toString().trim() || '',
+        seguro_vencimiento: vehiculoData.seguro_vencimiento || null,
+        seguro_estado: vehiculoData.seguro_estado || 'Vigente',
+        seguro_tipo: vehiculoData.seguro_tipo?.toString().trim() || '',
+        tarjeta_ypf: vehiculoData.tarjeta_ypf?.toString().trim() || '',
+        tipo: vehiculoData.tipo?.toString().trim() || 'Rodado'
+      };
+
+      VehiculoLogger.debug('Datos para actualizar:', datosParaEnviar);
+      
+      const response = await api.put('/flota/vehiculos', datosParaEnviar);
       
       if (response.data?.success) {
-        Logger.info('Vehículo actualizado exitosamente', { interno });
+        VehiculoLogger.info('✅ Vehículo actualizado exitosamente', { interno });
         return response.data;
       } else {
-        Logger.warn('Error al actualizar vehículo', response.data);
-        throw new Error(response.data?.message || 'Error al actualizar vehículo');
+        const errorMsg = response.data?.message || 'Error al actualizar vehículo';
+        VehiculoLogger.warn('Error en respuesta', response.data);
+        throw new Error(errorMsg);
       }
     } catch (error) {
-      Logger.error('Error en updateVehiculo', {
+      VehiculoLogger.error('Error en updateVehiculo', {
         interno,
         error: error.message,
         status: error.response?.status
@@ -146,25 +227,26 @@ const vehiculoService = {
     }
   },
 
-  // 🎯 ELIMINAR VEHÍCULO (CORREGIDO)
+  // 🎯 ELIMINAR VEHÍCULO
   deleteVehiculo: async (interno) => {
     try {
-      Logger.info('Eliminando vehículo', { interno });
+      VehiculoLogger.info('Eliminando vehículo', { interno });
       
-      // 🎯 ENVIAR EL INTERNO EN EL BODY PARA DELETE
+      // 🎯 ENVIAR INTERNO EN EL BODY PARA DELETE
       const response = await api.delete('/flota/vehiculos', { 
         data: { interno } 
       });
       
       if (response.data?.success) {
-        Logger.info('Vehículo eliminado exitosamente', { interno });
+        VehiculoLogger.info('✅ Vehículo eliminado exitosamente', { interno });
         return response.data;
       } else {
-        Logger.warn('Error al eliminar vehículo', response.data);
-        throw new Error(response.data?.message || 'Error al eliminar vehículo');
+        const errorMsg = response.data?.message || 'Error al eliminar vehículo';
+        VehiculoLogger.warn('Error en respuesta', response.data);
+        throw new Error(errorMsg);
       }
     } catch (error) {
-      Logger.error('Error en deleteVehiculo', {
+      VehiculoLogger.error('Error en deleteVehiculo', {
         interno,
         error: error.message,
         status: error.response?.status
@@ -173,27 +255,82 @@ const vehiculoService = {
     }
   },
 
-  // 🎯 NUEVO: OBTENER VEHÍCULO POR INTERNO
+  // 🎯 OBTENER VEHÍCULO POR INTERNO
   getVehiculoByInterno: async (interno) => {
     try {
-      Logger.info('Obteniendo vehículo por interno', { interno });
-      const response = await api.get(`/flota/vehiculos/${interno}`);
+      VehiculoLogger.info('Obteniendo vehículo por interno', { interno });
+      
+      const response = await api.get('/flota/vehiculos', {
+        params: { interno }
+      });
       
       if (response.data?.success) {
-        Logger.debug('Vehículo obtenido exitosamente');
+        VehiculoLogger.debug('✅ Vehículo obtenido exitosamente');
         return response.data;
       } else {
-        Logger.warn('Vehículo no encontrado', { interno });
+        VehiculoLogger.warn('Vehículo no encontrado', { interno });
         throw new Error(response.data?.message || 'Vehículo no encontrado');
       }
     } catch (error) {
-      Logger.error('Error en getVehiculoByInterno', {
+      VehiculoLogger.error('Error en getVehiculoByInterno', {
         interno,
         error: error.message
+      });
+      throw error;
+    }
+  },
+
+  // 🎯 PROBAR CONEXIÓN CON EL SERVICIO
+  testConnection: async () => {
+    try {
+      VehiculoLogger.info('Probando conexión con servicio de vehículos');
+      const response = await api.get('/flota/vehiculos', {
+        params: { limit: 1 }
+      });
+      
+      if (response.data) {
+        VehiculoLogger.info('✅ Conexión exitosa con servicio de vehículos');
+        return { success: true, message: 'Servicio de vehículos funcionando' };
+      } else {
+        return { success: false, message: 'Respuesta vacía del servidor' };
+      }
+    } catch (error) {
+      VehiculoLogger.error('❌ Error probando conexión:', error.message);
+      return { 
+        success: false, 
+        message: `Error de conexión: ${error.message}` 
+      };
+    }
+  },
+
+  // 🎯 CARGA MASIVA DE VEHÍCULOS
+  cargaMasivaVehiculos: async (data) => {
+    try {
+      VehiculoLogger.info('Ejecutando carga masiva de vehículos', { registros: data.length });
+      
+      const response = await api.post('/flota/carga_masiva_vehiculos', data);
+      
+      if (response.data?.success) {
+        VehiculoLogger.info('✅ Carga masiva exitosa', response.data);
+        return {
+          success: true,
+          message: response.data.message,
+          resumen: response.data.resumen,
+          detalle_errores: response.data.detalle_errores
+        };
+      } else {
+        const errorMsg = response.data?.message || 'Error en carga masiva';
+        VehiculoLogger.warn('Error en carga masiva:', response.data);
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      VehiculoLogger.error('Error en carga masiva:', {
+        error: error.message,
+        status: error.response?.status
       });
       throw error;
     }
   }
 };
 
-export { vehiculoService, Logger };
+export default vehiculoService;

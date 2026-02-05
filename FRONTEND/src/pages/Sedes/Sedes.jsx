@@ -1,101 +1,237 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import * as XLSX from 'xlsx'
+import useSedes from '../../hooks/useSedes'
 import GenericModal from '../../components/Common/GenericModal'
 import SedesForm from '../../components/DataTable/forms/SedesForm'
+import ColumnSelectorSedes from '../../components/Common/ColumnSelectorSedes'
+import CargaMasiva from '../../components/Common/CargaMasiva'
+import '@assets/css/buttons.css'
 import './Sedes.css'
 
 const Sedes = () => {
+  const {
+    sedes,
+    loading,
+    error,
+    pagination,
+    obtenerSedes,
+    crearSede,
+    actualizarSede,
+    eliminarSede,
+    sedeSeleccionada,
+    documents,
+    habilitations,
+    
+    // Estados de modales
+    isCreateModalOpen,
+    isEditModalOpen,
+    isViewModalOpen,
+    isDeleteModalOpen,
+    isDocumentosModalOpen,
+    isHabilitacionesModalOpen,
+    
+    // Funciones para abrir modales
+    openCreateModal,
+    openEditModal,
+    openViewModal,
+    openDeleteModal,
+    openDocumentosModal,
+    openHabilitacionesModal,
+    
+    // Funciones para cerrar modales
+    closeCreateModal,
+    closeEditModal,
+    closeViewModal,
+    closeDeleteModal,
+    closeDocumentosModal,
+    closeHabilitacionesModal
+  } = useSedes()
+  
+  const [filtroBusqueda, setFiltroBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroProvincia, setFiltroProvincia] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalType, setModalType] = useState('crear')
-  const [sedeSeleccionada, setSedeSeleccionada] = useState(null)
-
-  const sedes = [
-    {
-      id: 'SED-001',
-      codigo: 'SED-001',
-      nombre: 'Sede Central - COPESA',
-      tipo: 'Matriz',
-      direccion: 'Av. Principal 1234',
-      localidad: 'Capital Federal',
-      provincia: 'Buenos Aires',
-      telefono: '011-4567-8901',
-      email: 'central@copesa-ar.com',
-      responsable: 'Carlos Rodríguez',
-      base_operativa: 'COPESA Central',
-      habilitaciones: ['Ambiental', 'Sanitaria', 'Operativa'],
-      vencimiento_habilitacion: '2024-12-31',
-      estado: 'Activa',
-      documentos: 5,
-      vehiculos: 8
-    },
-    {
-      id: 'SED-002',
-      codigo: 'SED-002',
-      nombre: 'Planta Caucho - Caleta Olivia',
-      tipo: 'Planta Industrial',
-      direccion: 'Ruta Nacional 3, Km 125',
-      localidad: 'Caleta Olivia',
-      provincia: 'Santa Cruz',
-      telefono: '0297-456-789',
-      email: 'planta.caucho@copesa-ar.com',
-      responsable: 'María González',
-      base_operativa: 'Planta Caucho',
-      habilitaciones: ['Ambiental', 'Seguridad Química'],
-      vencimiento_habilitacion: '2024-11-15',
-      estado: 'Activa',
-      documentos: 8,
-      vehiculos: 15
-    },
-    {
-      id: 'SED-003',
-      codigo: 'SED-003',
-      nombre: 'Base Incineración',
-      tipo: 'Base Operativa',
-      direccion: 'Zona Industrial Norte',
-      localidad: 'Pilar',
-      provincia: 'Buenos Aires',
-      telefono: '0230-123-456',
-      email: 'incineracion@copesa-ar.com',
-      responsable: 'Juan Pérez',
-      base_operativa: 'Incineración',
-      habilitaciones: ['Térmica', 'Ambiental Especial'],
-      vencimiento_habilitacion: '2024-10-20',
-      estado: 'Activa',
-      documentos: 12,
-      vehiculos: 6
-    }
+  
+  // Estados para ColumnSelector
+  const [mostrarColumnSelector, setMostrarColumnSelector] = useState(false)
+  const [columnasVisibles, setColumnasVisibles] = useState({
+    'codigo': true,
+    'nombre': true,
+    'tipo': true,
+    'direccion': true,
+    'estado': true,
+    'localidad': false,
+    'provincia': false,
+    'telefono': false,
+    'email': false,
+    'responsable': false,
+    'base_operativa': false,
+    'habilitaciones': false,
+    'vehiculos_asignados': false,
+    'vencimiento_habilitacion': false,
+    'documentos': false
+  })
+  
+  // Estados para Carga Masiva
+  const [mostrarCargaMasiva, setMostrarCargaMasiva] = useState(false)
+  
+  // Plantilla para carga masiva de sedes
+  const sedesTemplateFields = [
+    'Código', 'Nombre', 'Tipo', 'Dirección', 'Localidad', 
+    'Provincia', 'Teléfono', 'Email', 'Responsable', 'Estado'
   ]
-
-  const handleOpenModal = (tipo, sede = null) => {
-    setModalType(tipo)
-    setSedeSeleccionada(sede)
-    setModalOpen(true)
+  const sedesRequiredFields = ['Nombre', 'Código', 'Tipo']
+  
+  // Handlers para ColumnSelector
+  const abrirColumnSelector = () => setMostrarColumnSelector(true)
+  const cerrarColumnSelector = () => setMostrarColumnSelector(false)
+  const toggleColumna = (columnaKey) => {
+    setColumnasVisibles(prev => ({
+      ...prev,
+      [columnaKey]: !prev[columnaKey]
+    }))
   }
 
-  const handleCloseModal = () => {
-    setModalOpen(false)
-    setSedeSeleccionada(null)
-  }
-
-  const handleSaveSede = (datos) => {
-    console.log('Guardar sede:', datos)
-    // Implementar lógica de guardado
-    handleCloseModal()
-  }
-
-  const handleDeleteSede = (id) => {
-    if (window.confirm('¿Está seguro de eliminar esta sede?')) {
-      console.log('Eliminar sede:', id)
+  const handleSaveSede = async (datos) => {
+    try {
+      if (sedeSeleccionada && sedeSeleccionada.id) {
+        await actualizarSede(sedeSeleccionada.id, datos)
+      } else {
+        await crearSede(datos)
+      }
+      closeEditModal()
+    } catch (error) {
+      console.error('Error guardando sede:', error)
     }
   }
 
+  const handleDeleteSede = async () => {
+    if (sedeSeleccionada && window.confirm('¿Está seguro de eliminar esta sede?')) {
+      await eliminarSede(sedeSeleccionada.id)
+    }
+  }
+  
+  // Manejar datos de carga masiva
+  const handleDataLoaded = async (data) => {
+    try {
+      // Normalizar los datos del Excel al formato del formulario
+      const normalizedData = data.map(row => ({
+        codigo: row.Código || row.codigo || row['Codigo'] || '',
+        nombre: row.Nombre || row.nombre || '',
+        tipo: row.Tipo || row.tipo || '',
+        direccion: row.Dirección || row.direccion || row['Dirección'] || '',
+        localidad: row.Localidad || row.localidad || '',
+        provincia: row.Provincia || row.provincia || '',
+        telefono: row.Teléfono || row.telefono || row['Teléfono'] || '',
+        email: row.Email || row.email || row['Correo'] || '',
+        responsable: row.Responsable || row.responsable || '',
+        base_operativa: row['Base Operativa'] || row.base_operativa || '',
+        estado: row.Estado || row.estado || 'Activa'
+      }))
+      
+      // Guardar cada registro
+      for (const sedeData of normalizedData) {
+        await crearSede(sedeData)
+      }
+    } catch (error) {
+      console.error('Error en carga masiva:', error)
+      alert('Error al procesar algunos registros')
+    }
+  }
+
+  // Exportar sedes a XLSX
+  const handleExportToXLSX = () => {
+    if (sedesFiltradas.length === 0) {
+      alert('⚠️ No hay datos para exportar');
+      return;
+    }
+    
+    try {
+      const dataToExport = sedesFiltradas.map(s => ({
+        Código: s.codigo || '',
+        Nombre: s.nombre || '',
+        Tipo: s.tipo || '',
+        Dirección: s.direccion || '',
+        Localidad: s.localidad || '',
+        Provincia: s.provincia || '',
+        Teléfono: s.telefono || '',
+        Email: s.email || '',
+        Responsable: s.responsable || '',
+        'Base Operativa': s.base_operativa || '',
+        Estado: s.estado || '',
+        'Venc. Habilitación': s.vencimiento_habilitacion || ''
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Sedes');
+      
+      // Ajustar ancho de columnas
+      const wscols = [
+        { wch: 10 }, { wch: 30 }, { wch: 15 }, { wch: 40 },
+        { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 30 },
+        { wch: 25 }, { wch: 20 }, { wch: 12 }, { wch: 18 }
+      ];
+      ws['!cols'] = wscols;
+      
+      const date = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `sedes_${date}.xlsx`);
+      
+      alert('✅ Sedes exportadas exitosamente');
+    } catch (err) {
+      console.error('Error exportando:', err);
+      alert('❌ Error al exportar datos');
+    }
+  };
+
+  // Filtrar localmente para la UI
   const sedesFiltradas = sedes.filter(sede => {
+    if (filtroBusqueda) {
+      const term = filtroBusqueda.toLowerCase()
+      if (!sede.nombre?.toLowerCase().includes(term) && 
+          !sede.codigo?.toLowerCase().includes(term) &&
+          !sede.direccion?.toLowerCase().includes(term)) return false
+    }
     if (filtroEstado && sede.estado !== filtroEstado) return false
     if (filtroProvincia && sede.provincia !== filtroProvincia) return false
     return true
   })
+
+  // Obtener opciones únicas
+  const provinciasUnicas = [...new Set(sedes.map(s => s.provincia).filter(Boolean))]
+  const estadosUnicos = [...new Set(sedes.map(s => s.estado).filter(Boolean))]
+
+  // Calcular estadísticas
+  const sedesActivas = sedes.filter(s => s.estado === 'Activa').length
+  const totalVehiculos = sedes.reduce((sum, sede) => sum + (sede.vehiculos_asignados || 0), 0)
+  const habilitacionesPorVencer = sedes.filter(s => {
+    if (!s.vencimiento_habilitacion) return false
+    const fechaVenc = new Date(s.vencimiento_habilitacion)
+    return fechaVenc < new Date(Date.now() + 60*24*60*60*1000)
+  }).length
+  const totalDocumentos = sedes.reduce((sum, sede) => sum + (sede.documentos || 0), 0)
+
+  if (loading && sedes.length === 0) {
+    return (
+      <div className="sedes-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Cargando sedes desde el servidor...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="sedes-page">
+        <div className="error-message">
+          <strong>Error de conexión:</strong> {error}
+          <button className="btn btn-primary" onClick={obtenerSedes}>Reintentar</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="sedes-page">
@@ -111,19 +247,15 @@ const Sedes = () => {
           <div className="label">Sedes Activas</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">{sedes.reduce((sum, sede) => sum + sede.vehiculos, 0)}</div>
+          <div className="number">{totalVehiculos}</div>
           <div className="label">Vehículos Asignados</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">
-            {sedes.filter(s => 
-              new Date(s.vencimiento_habilitacion) < new Date(Date.now() + 60*24*60*60*1000)
-            ).length}
-          </div>
+          <div className="number">{habilitacionesPorVencer}</div>
           <div className="label">Habilit. por Vencer</div>
         </div>
         <div className="summary-card-small">
-          <div className="number">{sedes.reduce((sum, sede) => sum + sede.documentos, 0)}</div>
+          <div className="number">{totalDocumentos}</div>
           <div className="label">Documentos</div>
         </div>
       </div>
@@ -134,16 +266,31 @@ const Sedes = () => {
             <span className="section-icon">🏢</span>
             Gestión de Sedes y Empresas COPESA
           </h2>
+          {/* Botón de Carga Masiva - Separado */}
+          <div className="carga-masiva-toolbar">
+            <button 
+              className="purple"
+              onClick={() => setMostrarCargaMasiva(true)}
+            >
+              <span className="btn-icon">📥</span> Carga Masiva
+            </button>
+          </div>
           <div className="table-toolbar">
-            <button className="btn btn-secondary">
+            <button 
+              className="teal"
+              onClick={abrirColumnSelector}
+            >
               <span className="btn-icon">👁️</span> Columnas
             </button>
-            <button className="btn btn-secondary">
+            <button 
+              className="blue"
+              onClick={handleExportToXLSX}
+            >
               <span className="btn-icon">📤</span> Exportar
             </button>
             <button 
-              className="btn btn-primary"
-              onClick={() => handleOpenModal('crear')}
+              className="green"
+              onClick={openCreateModal}
             >
               <span className="btn-icon">+</span> Nueva Sede/Empresa
             </button>
@@ -155,6 +302,8 @@ const Sedes = () => {
             type="text" 
             className="filter-select" 
             placeholder="Buscar sede..." 
+            value={filtroBusqueda}
+            onChange={(e) => setFiltroBusqueda(e.target.value)}
           />
           <select 
             className="filter-select"
@@ -162,11 +311,9 @@ const Sedes = () => {
             onChange={(e) => setFiltroProvincia(e.target.value)}
           >
             <option value="">Todas las provincias</option>
-            <option value="Buenos Aires">Buenos Aires</option>
-            <option value="Santa Cruz">Santa Cruz</option>
-            <option value="Córdoba">Córdoba</option>
-            <option value="Santa Fe">Santa Fe</option>
-            <option value="Mendoza">Mendoza</option>
+            {provinciasUnicas.map(prov => (
+              <option key={prov} value={prov}>{prov}</option>
+            ))}
           </select>
           <select 
             className="filter-select"
@@ -174,150 +321,250 @@ const Sedes = () => {
             onChange={(e) => setFiltroEstado(e.target.value)}
           >
             <option value="">Todos los estados</option>
-            <option value="Activa">Activa</option>
-            <option value="Inactiva">Inactiva</option>
-            <option value="En Trámite">En Trámite</option>
+            {estadosUnicos.map(est => (
+              <option key={est} value={est}>{est}</option>
+            ))}
           </select>
-          <select className="filter-select">
-            <option value="">Todas las bases</option>
-            <option value="COPESA Central">COPESA Central</option>
-            <option value="Planta Caucho">Planta Caucho</option>
-            <option value="Incineración">Incineración</option>
-            <option value="Tratamiento">Tratamiento</option>
-          </select>
+          {(filtroBusqueda || filtroEstado || filtroProvincia) && (
+            <button 
+              className="secondary"
+              onClick={() => {
+                setFiltroBusqueda('')
+                setFiltroEstado('')
+                setFiltroProvincia('')
+              }}
+            >
+              Limpiar Filtros
+            </button>
+          )}
         </div>
 
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Nombre Sede/Empresa</th>
-              <th>Tipo</th>
-              <th>Ubicación</th>
-              <th>Base Operativa</th>
-              <th>Habilitaciones</th>
-              <th>Vencimiento</th>
-              <th>Documentos</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sedesFiltradas.map((sede) => (
-              <tr key={sede.id}>
-                <td>
-                  <strong>{sede.codigo}</strong>
-                </td>
-                <td>
-                  <div>
-                    <strong>{sede.nombre}</strong>
-                    <div className="contacto-info">
-                      <small>📞 {sede.telefono}</small>
-                      <small>✉️ {sede.email}</small>
-                    </div>
-                  </div>
-                </td>
-                <td>{sede.tipo}</td>
-                <td>
-                  <div>
-                    <div>{sede.direccion}</div>
-                    <div>{sede.localidad}, {sede.provincia}</div>
-                    <small>👤 {sede.responsable}</small>
-                  </div>
-                </td>
-                <td>{sede.base_operativa}</td>
-                <td>
-                  <div className="habilitaciones-list">
-                    {sede.habilitaciones.map((hab, idx) => (
-                      <span key={idx} className="habilitacion-badge">
-                        {hab}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td>
-                  <span className={`vencimiento-badge ${
-                    new Date(sede.vencimiento_habilitacion) < new Date() ? 'vencido' :
-                    new Date(sede.vencimiento_habilitacion) < new Date(Date.now() + 60*24*60*60*1000) ? 'por-vencer' : 'vigente'
-                  }`}>
-                    {new Date(sede.vencimiento_habilitacion).toLocaleDateString('es-AR')}
-                  </span>
-                </td>
-                <td>
-                  <span className="documentos-count">
-                    📄 {sede.documentos}
-                  </span>
-                </td>
-                <td>
-                  <span className={`status-badge ${sede.estado === 'Activa' ? 'status-active' : 'status-inactivo'}`}>
-                    {sede.estado}
-                  </span>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button 
-                      className="icon-btn" 
-                      title="Ver detalles"
-                      onClick={() => handleOpenModal('ver', sede)}
-                    >
-                      👁️
-                    </button>
-                    <button 
-                      className="icon-btn" 
-                      title="Editar"
-                      onClick={() => handleOpenModal('editar', sede)}
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      className="icon-btn" 
-                      title="Documentación"
-                      onClick={() => handleOpenModal('documentos', sede)}
-                    >
-                      📄
-                    </button>
-                    <button 
-                      className="icon-btn" 
-                      title="Eliminar"
-                      onClick={() => handleDeleteSede(sede.id)}
-                      style={{ color: '#ef4444' }}
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </td>
+        <div className="data-table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {columnasVisibles.codigo && <th>Código</th>}
+                {columnasVisibles.nombre && <th>Nombre Sede/Empresa</th>}
+                {columnasVisibles.tipo && <th>Tipo</th>}
+                {columnasVisibles.direccion && <th>Ubicación</th>}
+                {columnasVisibles.base_operativa && <th>Base Operativa</th>}
+                {columnasVisibles.habilitaciones && <th>Habilitaciones</th>}
+                {columnasVisibles.vencimiento_habilitacion && <th>Vencimiento</th>}
+                {columnasVisibles.documentos && <th>Documentos</th>}
+                {columnasVisibles.estado && <th>Estado</th>}
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sedesFiltradas.map((sede) => (
+                <tr key={sede.id}>
+                  {columnasVisibles.codigo && (
+                    <td>
+                      <strong>{sede.codigo}</strong>
+                    </td>
+                  )}
+                  {columnasVisibles.nombre && (
+                    <td>
+                      <div>
+                        <strong>{sede.nombre}</strong>
+                        <div className="contacto-info">
+                          {columnasVisibles.telefono && <small>📞 {sede.telefono}</small>}
+                          {columnasVisibles.email && <small>✉️ {sede.email}</small>}
+                        </div>
+                      </div>
+                    </td>
+                  )}
+                  {columnasVisibles.tipo && <td>{sede.tipo}</td>}
+                  {columnasVisibles.direccion && (
+                    <td>
+                      <div>
+                        <div>{sede.direccion}</div>
+                        <div>{sede.localidad}, {sede.provincia}</div>
+                        {columnasVisibles.responsable && <small>👤 {sede.responsable}</small>}
+                      </div>
+                    </td>
+                  )}
+                  {columnasVisibles.base_operativa && <td>{sede.base_operativa}</td>}
+                  {columnasVisibles.habilitaciones && (
+                    <td>
+                      <div className="habilitaciones-list">
+                        {(sede.habilitaciones || []).map((hab, idx) => (
+                          <span key={idx} className="habilitacion-badge">
+                            {hab}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  )}
+                  {columnasVisibles.vencimiento_habilitacion && (
+                    <td>
+                      <span className={`vencimiento-badge ${
+                        new Date(sede.vencimiento_habilitacion) < new Date() ? 'vencido' :
+                        new Date(sede.vencimiento_habilitacion) < new Date(Date.now() + 60*24*60*60*1000) ? 'por-vencer' : 'vigente'
+                      }`}>
+                        {sede.vencimiento_habilitacion ? new Date(sede.vencimiento_habilitacion).toLocaleDateString('es-AR') : 'N/A'}
+                      </span>
+                    </td>
+                  )}
+                  {columnasVisibles.documentos && (
+                    <td>
+                      <span className="documentos-count">
+                        📄 {sede.documentos || 0}
+                      </span>
+                    </td>
+                  )}
+                  {columnasVisibles.estado && (
+                    <td>
+                      <span className={`status-badge ${sede.estado === 'Activa' ? 'status-active' : 'status-inactivo'}`}>
+                        {sede.estado}
+                      </span>
+                    </td>
+                  )}
+                  <td>
+                    <div className="action-buttons">
+                      <button 
+                        className="icon-btn" 
+                        title="Ver detalles"
+                        onClick={() => openViewModal(sede)}
+                      >
+                        👁️
+                      </button>
+                      <button 
+                        className="icon-btn" 
+                        title="Editar"
+                        onClick={() => openEditModal(sede)}
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        className="icon-btn" 
+                        title="Habilitaciones"
+                        onClick={() => openHabilitacionesModal(sede)}
+                      >
+                        📋
+                      </button>
+                      <button 
+                        className="icon-btn" 
+                        title="Documentación"
+                        onClick={() => openDocumentosModal(sede)}
+                      >
+                        📄
+                      </button>
+                      <button 
+                        className="icon-btn" 
+                        title="Eliminar"
+                        onClick={() => openDeleteModal(sede)}
+                        style={{ color: '#ef4444' }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginación */}
+        {pagination.total_pages > 1 && (
+          <div className="pagination">
+            <button
+              className="pagination-btn"
+              disabled={pagination.current_page === 1 || loading}
+              onClick={() => obtenerSedes(pagination.current_page - 1)}
+            >
+              ← Anterior
+            </button>
+            <span className="pagination-info">
+              Página {pagination.current_page} de {pagination.total_pages}
+              <small> ({pagination.total} registros)</small>
+            </span>
+            <button
+              className="pagination-btn"
+              disabled={pagination.current_page === pagination.total_pages || loading}
+              onClick={() => obtenerSedes(pagination.current_page + 1)}
+            >
+              Siguiente →
+            </button>
+          </div>
+        )}
       </section>
 
-      {/* Modal para Sedes */}
-      {modalOpen && (modalType === 'crear' || modalType === 'editar' || modalType === 'ver') && (
+      {/* Modal para Crear */}
+      {isCreateModalOpen && (
         <GenericModal
-          title={
-            modalType === 'crear' ? '➕ Nueva Sede/Empresa' :
-            modalType === 'editar' ? `✏️ Editar Sede: ${sedeSeleccionada?.nombre}` :
-            `👁️ Ver Sede: ${sedeSeleccionada?.nombre}`
-          }
-          onClose={handleCloseModal}
+          title="➕ Nueva Sede/Empresa"
+          onClose={closeCreateModal}
           size="large"
         >
           <SedesForm
-            mode={modalType}
-            sede={sedeSeleccionada}
-            onClose={handleCloseModal}
+            mode="crear"
+            onClose={closeCreateModal}
             onSave={handleSaveSede}
-            readOnly={modalType === 'ver'}
           />
         </GenericModal>
       )}
 
-      {/* Modal para Documentación */}
-      {modalOpen && modalType === 'documentos' && sedeSeleccionada && (
+      {/* Modal para Editar */}
+      {isEditModalOpen && sedeSeleccionada && (
         <GenericModal
-          title={`📄 Documentación: ${sedeSeleccionada.nombre}`}
-          onClose={handleCloseModal}
+          title={`✏️ Editar Sede: ${sedeSeleccionada?.nombre}`}
+          onClose={closeEditModal}
+          size="large"
+        >
+          <SedesForm
+            mode="editar"
+            sede={sedeSeleccionada}
+            onClose={closeEditModal}
+            onSave={handleSaveSede}
+          />
+        </GenericModal>
+      )}
+
+      {/* Modal para Ver */}
+      {isViewModalOpen && sedeSeleccionada && (
+        <GenericModal
+          title={`👁️ Ver Sede: ${sedeSeleccionada?.nombre}`}
+          onClose={closeViewModal}
+          size="large"
+        >
+          <SedesForm
+            mode="ver"
+            sede={sedeSeleccionada}
+            onClose={closeViewModal}
+            readOnly={true}
+          />
+        </GenericModal>
+      )}
+
+      {/* Modal para Eliminar */}
+      {isDeleteModalOpen && sedeSeleccionada && (
+        <GenericModal
+          title={`🗑️ Eliminar Sede: ${sedeSeleccionada?.nombre}`}
+          onClose={closeDeleteModal}
+          size="small"
+        >
+          <div className="delete-modal-content">
+            <p>¿Está seguro de eliminar la sede <strong>{sedeSeleccionada?.nombre}</strong>?</p>
+            <p>Esta acción no se puede deshacer.</p>
+            <div className="modal-actions">
+              <button className="btn secondary" onClick={closeDeleteModal}>
+                Cancelar
+              </button>
+              <button className="btn danger" onClick={handleDeleteSede}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </GenericModal>
+      )}
+
+      {/* Modal para Documentación */}
+      {isDocumentosModalOpen && sedeSeleccionada && (
+        <GenericModal
+          title={`📄 Documentación: ${sedeSeleccionada?.nombre}`}
+          onClose={closeDocumentosModal}
           size="large"
         >
           <div className="documentos-container">
@@ -325,52 +572,93 @@ const Sedes = () => {
             <div className="documentos-section">
               <h4>📋 Habilitaciones y Certificaciones</h4>
               <div className="documentos-list">
-                <div className="documento-item">
-                  <div className="documento-info">
-                    <strong>Habilitación Ambiental</strong>
-                    <small>N° 12345-AB</small>
-                    <span className="vencimiento por-vencer">
-                      Vence: 31/12/2024
-                    </span>
-                  </div>
-                  <div className="documento-actions">
-                    <button className="icon-btn" title="Descargar">📤</button>
-                    <button className="icon-btn" title="Renovar">🔄</button>
-                  </div>
-                </div>
-                <div className="documento-item">
-                  <div className="documento-info">
-                    <strong>Certificado de Seguridad Química</strong>
-                    <small>N° CHEM-789</small>
-                    <span className="vencimiento vigente">
-                      Vence: 15/11/2024
-                    </span>
-                  </div>
-                  <div className="documento-actions">
-                    <button className="icon-btn" title="Descargar">📤</button>
-                  </div>
-                </div>
+                {documents.length > 0 ? (
+                  documents.map((doc, index) => (
+                    <div key={index} className="documento-item">
+                      <div className="documento-info">
+                        <strong>{doc.tipo || doc.nombre || 'Documento'}</strong>
+                        <small>{doc.fecha_subida || doc.created_at || 'Sin fecha'}</small>
+                        {doc.vencimiento && (
+                          <span className={`vencimiento ${
+                            new Date(doc.vencimiento) < new Date() ? 'vencido' :
+                            new Date(doc.vencimiento) < new Date(Date.now() + 30*24*60*60*1000) ? 'por-vencer' : 'vigente'
+                          }`}>
+                            Vence: {new Date(doc.vencimiento).toLocaleDateString('es-AR')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="documento-actions">
+                        {doc.archivo && (
+                          <button 
+                            className="icon-btn" 
+                            title="Descargar"
+                            onClick={() => window.open(doc.archivo, '_blank')}
+                          >
+                            ⬇️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-documents">No hay documentos cargados</p>
+                )}
               </div>
-            </div>
-
-            <div className="subir-documento">
-              <h4>Subir nuevo documento</h4>
-              <select className="filter-select">
-                <option value="">Tipo de documento</option>
-                <option value="habilitacion_ambiental">Habilitación Ambiental</option>
-                <option value="certificado_seguridad">Certificado de Seguridad</option>
-                <option value="habilitacion_sanitaria">Habilitación Sanitaria</option>
-                <option value="certificado_incendio">Certificado de Incendio</option>
-                <option value="permiso_municipal">Permiso Municipal</option>
-              </select>
-              <input type="text" className="filter-select" placeholder="Número de documento" />
-              <input type="date" className="filter-select" placeholder="Fecha vencimiento" />
-              <input type="file" className="filter-select" accept=".pdf,.jpg,.jpeg,.png" />
-              <button className="btn btn-primary">Subir Documento</button>
             </div>
           </div>
         </GenericModal>
       )}
+
+      {/* Modal para Habilitaciones */}
+      {isHabilitacionesModalOpen && sedeSeleccionada && (
+        <GenericModal
+          title={`📋 Habilitaciones: ${sedeSeleccionada?.nombre}`}
+          onClose={closeHabilitacionesModal}
+          size="large"
+        >
+          <div className="habilitaciones-container">
+            <h3>Habilitaciones de la Sede</h3>
+            <div className="habilitaciones-list">
+              {habilitations.length > 0 ? (
+                habilitations.map((hab, index) => (
+                  <div key={index} className="habilitacion-item">
+                    <div className="habilitacion-info">
+                      <strong>{hab.tipo || 'Habilitación'}</strong>
+                      <small>Vence: {hab.fecha_vencimiento || 'Sin fecha'}</small>
+                    </div>
+                    <div className="habilitacion-status">
+                      <span className={`status-badge status-${hab.estado || 'activo'}`}>
+                        {hab.estado || 'Activo'}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="no-habilitaciones">No hay habilitaciones cargadas</p>
+              )}
+            </div>
+          </div>
+        </GenericModal>
+      )}
+      
+      {/* Modal ColumnSelector */}
+      {mostrarColumnSelector && (
+        <ColumnSelectorSedes
+          columnasVisibles={columnasVisibles}
+          onToggleColumna={toggleColumna}
+          onClose={cerrarColumnSelector}
+        />
+      )}
+      
+      {/* Modal de Carga Masiva */}
+      <CargaMasiva
+        isOpen={mostrarCargaMasiva}
+        onClose={() => setMostrarCargaMasiva(false)}
+        onDataLoaded={handleDataLoaded}
+        title="Carga Masiva de Sedes"
+        templateFields={sedesTemplateFields}
+        requiredFields={sedesRequiredFields}
+      />
     </div>
   )
 }

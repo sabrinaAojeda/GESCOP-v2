@@ -168,61 +168,83 @@
 /* Acciones */
 .actions-cell {
   min-width: 180px;
+  white-space: nowrap;
 }
 
 .action-buttons {
   display: flex;
   gap: 8px;
   justify-content: flex-start;
+  align-items: center;
 }
 
 .icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 6px;
   border: none;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  transition: all 0.2s;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: transparent;
+  padding: 4px;
+  margin: 0;
+  line-height: 1;
 }
 
-.btn-view {
-  background: #ebf8ff;
-  color: #2b6cb0;
+.icon-btn:hover {
+  transform: scale(1.1);
 }
 
-.btn-view:hover {
-  background: #bee3f8;
+.icon-btn:focus {
+  outline: 2px solid #4299e1;
+  outline-offset: 2px;
 }
 
-.btn-edit {
-  background: #fef3c7;
-  color: #92400e;
+.icon-btn:active {
+  transform: scale(0.95);
 }
 
-.btn-edit:hover {
-  background: #fde68a;
+/* Colores específicos para cada acción */
+.icon-btn.btn-view,
+.icon-btn[title="Ver detalles"] {
+  color: #4299e1;
+}
+.icon-btn.btn-view:hover,
+.icon-btn[title="Ver detalles"]:hover {
+  background: rgba(66, 153, 225, 0.15);
 }
 
-.btn-documents {
-  background: #e6fffa;
-  color: #234e52;
+.icon-btn.btn-edit,
+.icon-btn[title="Editar"] {
+  color: #ED8936;
+}
+.icon-btn.btn-edit:hover,
+.icon-btn[title="Editar"]:hover {
+  background: rgba(237, 137, 54, 0.15);
 }
 
-.btn-documents:hover {
-  background: #b2f5ea;
+.icon-btn.btn-documents,
+.icon-btn[title="Documentación"] {
+  color: #38A169;
+}
+.icon-btn.btn-documents:hover,
+.icon-btn[title="Documentación"]:hover {
+  background: rgba(56, 161, 105, 0.15);
 }
 
-.btn-delete {
-  background: #fed7d7;
-  color: #742a2a;
+.icon-btn.btn-delete,
+.icon-btn[title="Eliminar"] {
+  color: #E53E3E;
 }
-
-.btn-delete:hover {
-  background: #feb2b2;
+.icon-btn.btn-delete:hover,
+.icon-btn[title="Eliminar"]:hover {
+  background: rgba(229, 62, 62, 0.15);
 }
 
 /* Estados de carga y vacío */
@@ -273,4 +295,17 @@
   color: #a0aec0;
   max-width: 300px;
   margin: 0 auto;
+}
+
+/* ASEGURAR QUE LOS BOTONES SIEMPRE SEAN CLICKEABLES */
+.icon-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+.actions-cell {
+  pointer-events: auto !important;
+  z-index: 5 !important;
 }

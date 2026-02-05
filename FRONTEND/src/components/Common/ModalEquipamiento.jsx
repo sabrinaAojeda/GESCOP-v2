@@ -3,14 +3,20 @@ import React, { useState } from 'react'
 import GenericModal from './GenericModal'
 
 const ModalEquipamiento = ({ mode = 'crear', equipamiento, onClose, onSave }) => {
+  // Los campos deben coincidir con la tabla: codigo, nombre, tipo, marca, modelo, serie, ubicacion, estado, fecha_adquisicion, ultimo_mantenimiento, proximo_mantenimiento, responsable, observaciones
   const [formData, setFormData] = useState({
     codigo: equipamiento?.codigo || '',
-    descripcion: equipamiento?.descripcion || '',
-    tipo: equipamiento?.tipo || '',
-    vehiculo_asignado: equipamiento?.vehiculo_asignado || '',
+    nombre: equipamiento?.nombre || '',
+    tipo: equipamiento?.tipo || 'Equipo',
+    marca: equipamiento?.marca || '',
+    modelo: equipamiento?.modelo || '',
+    serie: equipamiento?.serie || '',
+    ubicacion: equipamiento?.ubicacion || '',
     estado: equipamiento?.estado || 'Operativo',
-    ultima_revision: equipamiento?.ultima_revision || '',
-    proxima_revision: equipamiento?.proxima_revision || '',
+    fecha_adquisicion: equipamiento?.fecha_adquisicion || '',
+    ultimo_mantenimiento: equipamiento?.ultimo_mantenimiento || '',
+    proximo_mantenimiento: equipamiento?.proximo_mantenimiento || '',
+    responsable: equipamiento?.responsable || '',
     observaciones: equipamiento?.observaciones || ''
   })
 
@@ -18,7 +24,7 @@ const ModalEquipamiento = ({ mode = 'crear', equipamiento, onClose, onSave }) =>
     e.preventDefault()
     
     // Validaciones básicas
-    if (!formData.codigo || !formData.descripcion || !formData.tipo) {
+    if (!formData.codigo || !formData.nombre || !formData.tipo) {
       alert('Por favor complete los campos obligatorios (*)')
       return
     }
@@ -31,19 +37,19 @@ const ModalEquipamiento = ({ mode = 'crear', equipamiento, onClose, onSave }) =>
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // Calcular próxima revisión automáticamente si se ingresa última revisión
-  const handleUltimaRevisionChange = (e) => {
+  // Calcular próximo mantenimiento automáticamente si se ingresa último mantenimiento
+  const handleUltimoMantenimientoChange = (e) => {
     const { value } = e.target
     setFormData(prev => {
-      const newData = { ...prev, ultima_revision: value }
+      const newData = { ...prev, ultimo_mantenimiento: value }
       
-      // Si se ingresa una última revisión, calcular próxima revisión (6 meses después)
+      // Si se ingresa un último mantenimiento, calcular próximo (6 meses después)
       if (value) {
         try {
-          const ultimaRevision = new Date(value)
-          const proximaRevision = new Date(ultimaRevision)
-          proximaRevision.setMonth(proximaRevision.getMonth() + 6)
-          newData.proxima_revision = proximaRevision.toISOString().split('T')[0]
+          const ultimo = new Date(value)
+          const proximo = new Date(ultimo)
+          proximo.setMonth(proximo.getMonth() + 6)
+          newData.proximo_mantenimiento = proximo.toISOString().split('T')[0]
         } catch (e) {
           // Si hay error en la fecha, no calcular
         }
@@ -72,7 +78,7 @@ const ModalEquipamiento = ({ mode = 'crear', equipamiento, onClose, onSave }) =>
                 value={formData.codigo}
                 onChange={handleChange}
                 required
-                placeholder="Ej: GPS-001"
+                placeholder="Ej: EQ-001"
               />
             </div>
             <div className="form-group">
@@ -84,45 +90,78 @@ const ModalEquipamiento = ({ mode = 'crear', equipamiento, onClose, onSave }) =>
                 onChange={handleChange}
                 required
               >
-                <option value="">Seleccionar tipo...</option>
-                <option value="Navegación">Navegación</option>
-                <option value="Comunicación">Comunicación</option>
-                <option value="Seguridad">Seguridad</option>
-                <option value="Control">Control</option>
-                <option value="Otros">Otros</option>
+                <option value="Equipo">Equipo</option>
+                <option value="Maquinaria">Maquinaria</option>
+                <option value="Herramienta">Herramienta</option>
+                <option value="Otro">Otro</option>
               </select>
             </div>
           </div>
           
           <div className="form-group">
-            <label className="form-label">Descripción *</label>
+            <label className="form-label">Nombre/Descripción *</label>
             <input
               type="text"
               className="form-input"
-              name="descripcion"
-              value={formData.descripcion}
+              name="nombre"
+              value={formData.nombre}
               onChange={handleChange}
               required
-              placeholder="Descripción detallada del equipamiento"
+              placeholder="Nombre o descripción del equipamiento"
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Vehículo Asignado</label>
-              <select
+              <label className="form-label">Marca</label>
+              <input
+                type="text"
                 className="form-input"
-                name="vehiculo_asignado"
-                value={formData.vehiculo_asignado}
+                name="marca"
+                value={formData.marca}
                 onChange={handleChange}
-              >
-                <option value="">Sin asignar</option>
-                <option value="AB-123-CD">AB-123-CD</option>
-                <option value="EF-456-GH">EF-456-GH</option>
-                <option value="IJ-789-KL">IJ-789-KL</option>
-                <option value="MA-001-AA">MA-001-AA</option>
-              </select>
+                placeholder="Ej: Caterpillar"
+              />
             </div>
+            <div className="form-group">
+              <label className="form-label">Modelo</label>
+              <input
+                type="text"
+                className="form-input"
+                name="modelo"
+                value={formData.modelo}
+                onChange={handleChange}
+                placeholder="Ej: 320D"
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Serie</label>
+              <input
+                type="text"
+                className="form-input"
+                name="serie"
+                value={formData.serie}
+                onChange={handleChange}
+                placeholder="Número de serie"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Ubicación</label>
+              <input
+                type="text"
+                className="form-input"
+                name="ubicacion"
+                value={formData.ubicacion}
+                onChange={handleChange}
+                placeholder="Ubicación actual"
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
             <div className="form-group">
               <label className="form-label">Estado</label>
               <select
@@ -132,37 +171,58 @@ const ModalEquipamiento = ({ mode = 'crear', equipamiento, onClose, onSave }) =>
                 onChange={handleChange}
               >
                 <option value="Operativo">Operativo</option>
-                <option value="Almacenado">Almacenado</option>
                 <option value="Mantenimiento">Mantenimiento</option>
-                <option value="Vencido">Vencido</option>
+                <option value="Fuera de Servicio">Fuera de Servicio</option>
+                <option value="Baja">Baja</option>
               </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Fecha Adquisición</label>
+              <input
+                type="date"
+                className="form-input"
+                name="fecha_adquisicion"
+                value={formData.fecha_adquisicion}
+                onChange={handleChange}
+              />
             </div>
           </div>
         </div>
 
         <div className="form-section">
-          <h3 className="form-section-title">Mantenimiento y Revisiones</h3>
+          <h3 className="form-section-title">Mantenimiento</h3>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Última Revisión</label>
+              <label className="form-label">Último Mantenimiento</label>
               <input
                 type="date"
                 className="form-input"
-                name="ultima_revision"
-                value={formData.ultima_revision}
-                onChange={handleUltimaRevisionChange}
+                name="ultimo_mantenimiento"
+                value={formData.ultimo_mantenimiento}
+                onChange={handleUltimoMantenimientoChange}
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Próxima Revisión</label>
+              <label className="form-label">Próximo Mantenimiento</label>
               <input
                 type="date"
                 className="form-input"
-                name="proxima_revision"
-                value={formData.proxima_revision}
+                name="proximo_mantenimiento"
+                value={formData.proximo_mantenimiento}
                 onChange={handleChange}
               />
             </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Responsable</label>
+            <input
+              type="text"
+              className="form-input"
+              name="responsable"
+              value={formData.responsable}
+              onChange={handleChange}
+              placeholder="Persona responsable del equipamento"
+            />
           </div>
         </div>
 

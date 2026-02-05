@@ -92,21 +92,62 @@
 
 .action-buttons {
     display: flex;
-    gap: 5px;
+    gap: 8px;
+    align-items: center;
 }
 
 .icon-btn {
-    background: none;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    background: transparent;
     border: none;
     cursor: pointer;
     padding: 6px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
+    border-radius: 6px;
+    transition: all 0.2s ease;
     font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    line-height: 1;
 }
 
 .icon-btn:hover {
-    background: var(--gray-100);
+    transform: scale(1.1);
+}
+
+.icon-btn:focus {
+    outline: 2px solid var(--primary-blue);
+    outline-offset: 2px;
+}
+
+.icon-btn:active {
+    transform: scale(0.95);
+}
+
+/* Colores por acción */
+.icon-btn[title="Ver"] {
+    color: #4299e1;
+}
+.icon-btn[title="Ver"]:hover {
+    background: rgba(66, 153, 225, 0.15);
+}
+
+.icon-btn[title="Editar"] {
+    color: #ED8936;
+}
+.icon-btn[title="Editar"]:hover {
+    background: rgba(237, 137, 54, 0.15);
+}
+
+.icon-btn[title="Documentación"] {
+    color: #38A169;
+}
+.icon-btn[title="Documentación"]:hover {
+    background: rgba(56, 161, 105, 0.15);
 }
 
 .btn {
@@ -139,4 +180,17 @@
 
 .btn-secondary:hover {
     background: var(--gray-200);
+}
+
+/* ASEGURAR QUE LOS BOTONES SIEMPRE SEAN CLICKEABLES */
+.icon-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+    position: relative !important;
+}
+
+.actions-cell {
+    pointer-events: auto !important;
+    z-index: 5 !important;
 }
